@@ -56,7 +56,6 @@ button {
 
 .hud-top-left,
 .hud-top-right,
-.hud-mid-left,
 .hud-mid-right,
 .hud-bottom-left,
 .hud-bottom-right,
@@ -65,9 +64,17 @@ button {
   pointer-events: auto;
 }
 
+.hud-left-stack {
+  position: absolute;
+  top: 12.25rem;
+  left: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  pointer-events: auto;
+}
+
 .hud-top-left { top: 1rem; left: 1rem; }
 .hud-top-right { top: 1rem; right: 1rem; }
-.hud-mid-left { top: 50%; left: 1rem; transform: translateY(-50%); }
 .hud-mid-right { top: 50%; right: 1rem; transform: translateY(-50%); }
 .hud-bottom-left { left: 1rem; bottom: 1rem; }
 .hud-bottom-right { right: 1rem; bottom: 1rem; }
@@ -86,10 +93,11 @@ button {
 
 .hud-panel { padding: 1rem; }
 .speed-panel { min-width: 280px; }
-.map-panel { min-width: 170px; padding: 0.75rem; }
-.info-panel { width: min(24rem, calc(100vw - 2rem)); }
+.map-panel { width: 12.25rem; padding: 0.85rem; }
+.info-panel { width: min(22rem, calc(100vw - 2rem)); }
 .time-panel,
 .coord-panel { min-width: 200px; }
+.control-panel { min-width: 260px; }
 
 .panel-heading,
 .metric-row,
@@ -192,13 +200,15 @@ button {
 
 .solar-map {
   position: relative;
-  width: 8rem;
-  height: 8rem;
-  margin: 0 auto 0.5rem;
+  width: 9rem;
+  height: 9rem;
+  margin: 0.1rem auto 0.75rem;
   overflow: hidden;
   border: 1px solid rgba(0, 199, 200, 0.2);
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.42);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0, 199, 200, 0.07), transparent 48%),
+    rgba(0, 0, 0, 0.42);
 }
 
 .orbit {
@@ -265,6 +275,18 @@ button {
 .distance-label,
 .fps-label,
 .controls-hint { font-size: 0.72rem; color: var(--muted-foreground); }
+.map-stats {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+  padding-top: 0.15rem;
+}
+.map-caption {
+  margin: 0 0 0.7rem;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
 .info-copy {
   margin: 0;
   font-size: 0.82rem;
@@ -332,8 +354,8 @@ button {
 
   .hud-top-left,
   .hud-top-right,
+  .hud-left-stack,
   .hud-mid-right,
-  .hud-mid-left,
   .hud-bottom-left,
   .hud-bottom-right,
   .hud-bottom-center {
@@ -343,6 +365,7 @@ button {
 
   .speed-panel,
   .map-panel,
+  .info-panel,
   .time-panel,
   .coord-panel { min-width: 0; }
 

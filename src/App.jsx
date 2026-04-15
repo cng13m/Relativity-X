@@ -525,7 +525,10 @@ function MiniMap() {
   const blackHoleDistance = Math.sqrt((blackHole.x - shipPosition.x) ** 2 + (blackHole.z - shipPosition.z) ** 2);
   return (
     <HudPanel className="map-panel">
-      <div className="section-title">Solar Map</div>
+      <div className="panel-heading">
+        <span>Solar Map</span>
+        <span className="mode-name">Guidance</span>
+      </div>
       <div className="solar-map">
         <div className="orbit orbit-outer" />
         <div className="orbit orbit-inner" />
@@ -553,8 +556,11 @@ function MiniMap() {
         <div className="map-tag map-tag-black-hole" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }}>BH</div>
         <div className="map-tag map-tag-ship" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }}>YOU</div>
       </div>
-      <div className="distance-label">XZ Distance: <span>{xzDistance.toFixed(1)}</span></div>
-      <div className="distance-label">Black Hole Range: <span>{blackHoleDistance.toFixed(1)}</span></div>
+      <div className="map-stats">
+        <div className="metric-row"><span>XZ Distance</span><span className="metric-cyan">{xzDistance.toFixed(1)}</span></div>
+        <div className="metric-row"><span>Black Hole Range</span><span className="metric-amber">{blackHoleDistance.toFixed(1)}</span></div>
+      </div>
+      <p className="map-caption">Follow the cyan route from your ship toward the red black-hole marker.</p>
       <button type="button" className="secondary-button" onClick={returnToSolarSystem}>Snap Back to Solar System</button>
     </HudPanel>
   );
@@ -598,7 +604,7 @@ function ControlHud() {
   return (
     <HudPanel className="control-panel">
       <div className="control-buttons">
-        <button type="button" className="secondary-button" onClick={() => setCameraMode(cameraMode === "follow" ? "free" : "follow")}>{cameraMode === "follow" ? "Free Camera" : "Follow Camera"}</button>
+        <button type="button" className="secondary-button" onClick={() => setCameraMode(cameraMode === "follow" ? "free" : "follow")}>{cameraMode === "follow" ? "Free Camera" : "Follow Ship"}</button>
         <button type="button" className="pause-button" onClick={togglePause}>{isPaused ? "Resume" : "Pause"}</button>
         <button type="button" className="reset-button" onClick={reset}>Reset</button>
       </div>
@@ -612,15 +618,7 @@ function InfoHud() {
   const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
 
   if (!selectedBody) {
-    return (
-      <HudPanel className="info-panel">
-        <div className="panel-heading">
-          <span>Object Info</span>
-          <span className="mode-name">Ready</span>
-        </div>
-        <p className="info-copy">Click a planet, the Sun, the Moon, or the black hole to see a simple explanation and a short bit of history.</p>
-      </HudPanel>
-    );
+    return null;
   }
 
   return (
@@ -662,9 +660,9 @@ export default function App() {
       <MainScene />
       <div className="hud-layer">
         <div className="hud-top-left"><SpeedHud /></div>
+        <div className="hud-left-stack"><InfoHud /></div>
         <div className="hud-top-right"><TimeHud /></div>
         <div className="hud-mid-right"><MiniMap /></div>
-        <div className="hud-mid-left"><InfoHud /></div>
         <div className="hud-bottom-left"><CoordinatesHud /></div>
         <div className="hud-bottom-right"><ControlHud /></div>
         <div className="hud-bottom-center"><ControlsHint /></div>
