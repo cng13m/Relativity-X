@@ -219,6 +219,43 @@ button {
   height: 0.65rem;
   border-radius: 999px;
   transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.map-route {
+  position: absolute;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, rgba(255, 224, 42, 0.35), rgba(239, 68, 68, 0.6));
+  z-index: 1;
+}
+
+.map-route-ship {
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.8), rgba(239, 68, 68, 0.7));
+}
+
+.map-tag {
+  position: absolute;
+  padding: 0.08rem 0.24rem;
+  border-radius: 999px;
+  font-family: "Consolas", "SFMono-Regular", monospace;
+  font-size: 0.52rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  transform: translate(0.45rem, -50%);
+  z-index: 3;
+}
+
+.map-tag-black-hole {
+  color: #ffd2d2;
+  background: rgba(80, 10, 10, 0.65);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.map-tag-ship {
+  color: #c8fbff;
+  background: rgba(3, 46, 54, 0.72);
+  border: 1px solid rgba(34, 211, 238, 0.35);
 }
 
 .sun-dot { background: #ffe02a; box-shadow: 0 0 8px rgba(253, 224, 71, 0.8); }

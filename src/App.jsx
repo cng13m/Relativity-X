@@ -509,19 +509,52 @@ function MiniMap() {
   const shipPosition = useSimulationStore((state) => state.shipPosition);
   const returnToSolarSystem = useSimulationStore((state) => state.returnToSolarSystem);
   const blackHole = getBlackHoleScenePosition();
-  const scale = 0.18;
+  const maxExtent = Math.max(
+    60,
+    Math.abs(shipPosition.x),
+    Math.abs(shipPosition.z),
+    Math.abs(blackHole.x),
+    Math.abs(blackHole.z),
+  ) * 1.15;
+  const toPercent = (value) => 50 + (value / maxExtent) * 46;
+  const shipLeft = toPercent(shipPosition.x);
+  const shipTop = toPercent(shipPosition.z);
+  const blackHoleLeft = toPercent(blackHole.x);
+  const blackHoleTop = toPercent(blackHole.z);
   const xzDistance = Math.sqrt(shipPosition.x ** 2 + shipPosition.z ** 2);
+  const blackHoleDistance = Math.sqrt((blackHole.x - shipPosition.x) ** 2 + (blackHole.z - shipPosition.z) ** 2);
   return (
     <HudPanel className="map-panel">
       <div className="section-title">Solar Map</div>
       <div className="solar-map">
         <div className="orbit orbit-outer" />
         <div className="orbit orbit-inner" />
+        <div
+          className="map-route"
+          style={{
+            left: "50%",
+            top: "50%",
+            width: `${Math.hypot(blackHoleLeft - 50, blackHoleTop - 50)}%`,
+            transform: `translateY(-50%) rotate(${Math.atan2(blackHoleTop - 50, blackHoleLeft - 50)}rad)`,
+          }}
+        />
+        <div
+          className="map-route map-route-ship"
+          style={{
+            left: `${shipLeft}%`,
+            top: `${shipTop}%`,
+            width: `${Math.hypot(blackHoleLeft - shipLeft, blackHoleTop - shipTop)}%`,
+            transform: `translateY(-50%) rotate(${Math.atan2(blackHoleTop - shipTop, blackHoleLeft - shipLeft)}rad)`,
+          }}
+        />
         <div className="map-dot sun-dot" style={{ left: "50%", top: "47.4737%" }} />
-        <div className="map-dot black-hole-dot" style={{ left: `${50 + blackHole.x * scale}%`, top: `${50 + blackHole.z * scale}%` }} />
-        <div className="map-dot ship-dot" style={{ left: `${50 + shipPosition.x * scale}%`, top: `${50 + shipPosition.z * scale}%` }} />
+        <div className="map-dot black-hole-dot" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }} />
+        <div className="map-dot ship-dot" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }} />
+        <div className="map-tag map-tag-black-hole" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }}>BH</div>
+        <div className="map-tag map-tag-ship" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }}>YOU</div>
       </div>
       <div className="distance-label">XZ Distance: <span>{xzDistance.toFixed(1)}</span></div>
+      <div className="distance-label">Black Hole Range: <span>{blackHoleDistance.toFixed(1)}</span></div>
       <button type="button" className="secondary-button" onClick={returnToSolarSystem}>Snap Back to Solar System</button>
     </HudPanel>
   );
