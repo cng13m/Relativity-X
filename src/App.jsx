@@ -64,6 +64,7 @@ function PlanetBody({ body }) {
   const radius = getScaledRadius(body.radius, body.type);
   const distance = getScaledDistance(body.distanceFromSun);
   const textures = useMemo(() => createBodyTextures(), []);
+  const planetTextures = textures.planets[body.id];
 
   const orbitPoints = useMemo(() => {
     if (body.distanceFromSun === 0 || body.type === "moon") {
@@ -118,22 +119,26 @@ function PlanetBody({ body }) {
         <mesh ref={meshRef}>
           <sphereGeometry args={[radius, 64, 64]} />
           {body.type === "star" ? (
-            <meshBasicMaterial map={textures.planets.sun} color={body.color} />
+            <meshBasicMaterial map={planetTextures.map} color={body.color} />
           ) : (
             <meshStandardMaterial
-              map={textures.planets[body.id]}
+              map={planetTextures.map}
+              bumpMap={planetTextures.bumpMap}
+              bumpScale={body.id === "mercury" ? 0.12 : body.id === "moon" ? 0.1 : body.id === "mars" ? 0.05 : body.id === "earth" ? 0.03 : 0.015}
+              roughnessMap={planetTextures.roughnessMap}
+              emissiveMap={planetTextures.emissiveMap}
               color={body.color}
               emissive={body.id === "earth" ? "#17358d" : body.color}
-              emissiveIntensity={body.id === "earth" ? 0.1 : 0.03}
-              roughness={body.id === "mercury" || body.id === "moon" ? 0.95 : 0.82}
-              metalness={0.02}
+              emissiveIntensity={body.id === "earth" ? 0.22 : body.type === "planet" ? 0.02 : 0}
+              roughness={body.id === "earth" ? 0.72 : body.id === "jupiter" || body.id === "saturn" ? 0.82 : body.id === "uranus" || body.id === "neptune" ? 0.68 : 0.9}
+              metalness={0.01}
             />
           )}
         </mesh>
         {body.id === "earth" ? (
           <mesh ref={cloudRef}>
             <sphereGeometry args={[radius * 1.026, 64, 64]} />
-            <meshStandardMaterial map={textures.earthClouds} transparent opacity={0.35} depthWrite={false} roughness={1} metalness={0} />
+            <meshStandardMaterial map={planetTextures.cloudMap} transparent opacity={0.42} depthWrite={false} roughness={1} metalness={0} />
           </mesh>
         ) : null}
         {body.type === "star" ? (
@@ -146,13 +151,13 @@ function PlanetBody({ body }) {
         {body.id === "saturn" ? (
           <mesh rotation={[Math.PI / 2.5, 0, 0]}>
             <ringGeometry args={[radius * 1.4, radius * 2.1, 128]} />
-            <meshStandardMaterial map={textures.saturnRing} color="#d8c6a2" side={THREE.DoubleSide} transparent opacity={0.82} alphaTest={0.08} />
+            <meshStandardMaterial map={textures.saturnRing.map} alphaMap={textures.saturnRing.alphaMap} color="#d8c6a2" side={THREE.DoubleSide} transparent opacity={0.9} alphaTest={0.18} />
           </mesh>
         ) : null}
         {body.id === "uranus" ? (
           <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]}>
             <ringGeometry args={[radius * 1.5, radius * 2, 64]} />
-            <meshStandardMaterial map={textures.uranusRing} color="#8ea5aa" side={THREE.DoubleSide} transparent opacity={0.28} alphaTest={0.04} />
+            <meshStandardMaterial map={textures.uranusRing.map} alphaMap={textures.uranusRing.alphaMap} color="#8ea5aa" side={THREE.DoubleSide} transparent opacity={0.34} alphaTest={0.12} />
           </mesh>
         ) : null}
       </group>
@@ -203,7 +208,15 @@ function AsteroidBelt({ innerDistance, outerDistance, count, color, geometry = "
   return (
     <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
       {geometry === "icosahedron" ? <icosahedronGeometry args={[1, 0]} /> : <dodecahedronGeometry args={[1, 0]} />}
-      <meshStandardMaterial map={geometry === "icosahedron" ? textures.kuiper : textures.asteroid} color={color} roughness={0.95} metalness={0.06} />
+      <meshStandardMaterial
+        map={(geometry === "icosahedron" ? textures.kuiper : textures.asteroid).map}
+        bumpMap={(geometry === "icosahedron" ? textures.kuiper : textures.asteroid).bumpMap}
+        bumpScale={0.06}
+        roughnessMap={(geometry === "icosahedron" ? textures.kuiper : textures.asteroid).roughnessMap}
+        color={color}
+        roughness={0.95}
+        metalness={0.03}
+      />
     </instancedMesh>
   );
 }
@@ -281,6 +294,7 @@ function Ship() {
   const keysRef = useRef({ forward: false, backward: false, left: false, right: false, up: false, down: false, rollLeft: false, rollRight: false });
   const { camera } = useThree();
   const textures = useMemo(() => createBodyTextures(), []);
+  const shipMaterial = textures.ship;
   const {
     cameraMode,
     speedMode,
@@ -405,13 +419,13 @@ function Ship() {
 
   return (
     <group ref={shipRef} position={[0, 5, 50]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.26, 0.34, 1.9, 24]} /><meshStandardMaterial map={textures.shipMetal} color="#9ba9bc" metalness={0.8} roughness={0.22} /></mesh>
-      <mesh position={[0, 0, -1.12]}><coneGeometry args={[0.26, 0.62, 24]} /><meshStandardMaterial map={textures.shipMetal} color="#c7d1dd" metalness={0.82} roughness={0.18} /></mesh>
-      <mesh position={[0, 0, 0.95]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.3, 0.45, 20]} /><meshStandardMaterial map={textures.shipMetal} color="#9ba9bc" metalness={0.8} roughness={0.22} /></mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.26, 0.34, 1.9, 24]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.8} roughness={0.22} /></mesh>
+      <mesh position={[0, 0, -1.12]}><coneGeometry args={[0.26, 0.62, 24]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#c7d1dd" metalness={0.82} roughness={0.18} /></mesh>
+      <mesh position={[0, 0, 0.95]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.3, 0.45, 20]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.8} roughness={0.22} /></mesh>
       <mesh position={[0, 0.18, -0.58]}><sphereGeometry args={[0.22, 24, 24, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshPhysicalMaterial color="#4fd5ff" emissive="#0bbde4" emissiveIntensity={0.3} roughness={0.08} transmission={0.35} transparent opacity={0.88} /></mesh>
-      <mesh position={[0.65, -0.12, 0]} rotation={[0.08, 0, Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={textures.shipMetal} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
-      <mesh position={[-0.65, -0.12, 0]} rotation={[0.08, 0, -Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={textures.shipMetal} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
-      <mesh position={[0, 0.33, 0.45]} rotation={[0.12, 0, 0]}><boxGeometry args={[0.08, 0.36, 0.35]} /><meshStandardMaterial map={textures.shipMetal} color="#9ba9bc" metalness={0.72} roughness={0.24} /></mesh>
+      <mesh position={[0.65, -0.12, 0]} rotation={[0.08, 0, Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
+      <mesh position={[-0.65, -0.12, 0]} rotation={[0.08, 0, -Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
+      <mesh position={[0, 0.33, 0.45]} rotation={[0.12, 0, 0]}><boxGeometry args={[0.08, 0.36, 0.35]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.72} roughness={0.24} /></mesh>
       <mesh position={[0, 0, 1.26]}><sphereGeometry args={[0.14, 20, 20]} /><meshBasicMaterial color="#2de2ff" /></mesh>
       <mesh position={[0, 0, 1.42]} rotation={[Math.PI / 2, 0, 0]}><coneGeometry args={[0.08, 0.44, 18]} /><meshBasicMaterial color="#8cf4ff" transparent opacity={0.7} /></mesh>
       <pointLight position={[0, 0, 1.15]} color="#06d2ff" intensity={1.4} distance={9} />
