@@ -65,6 +65,7 @@ function PlanetBody({ body }) {
   const distance = getScaledDistance(body.distanceFromSun);
   const textures = useMemo(() => createBodyTextures(), []);
   const planetTextures = textures.planets[body.id];
+  const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
 
   const orbitPoints = useMemo(() => {
     if (body.distanceFromSun === 0 || body.type === "moon") {
@@ -116,7 +117,13 @@ function PlanetBody({ body }) {
     <group>
       {orbitPoints ? <Line points={orbitPoints} color="#415063" lineWidth={1} transparent opacity={0.35} /> : null}
       <group ref={bodyRef} position={position}>
-        <mesh ref={meshRef}>
+        <mesh
+          ref={meshRef}
+          onClick={(event) => {
+            event.stopPropagation();
+            setSelectedBody(body);
+          }}
+        >
           <sphereGeometry args={[radius, 64, 64]} />
           {body.type === "star" ? (
             <meshBasicMaterial map={planetTextures.map} color={body.color} />
@@ -225,7 +232,8 @@ function WormholeEffect() {
   const eventHorizonRef = useRef(null);
   const pulseRef = useRef(null);
   const timeoutRef = useRef(null);
-  const { triggerWormhole, completeWormhole, isInWormhole, shipPosition } = useSimulationStore();
+  const { triggerWormhole, completeWormhole, isInWormhole, shipPosition, setSelectedBody } = useSimulationStore();
+  const blackHoleBody = CELESTIAL_BODIES.find((body) => body.id === "blackhole");
   const target = getBlackHoleScenePosition();
 
   useEffect(() => {
@@ -257,7 +265,12 @@ function WormholeEffect() {
 
   return (
     <group position={[target.x, target.y, target.z]}>
-      <mesh>
+      <mesh
+        onClick={(event) => {
+          event.stopPropagation();
+          setSelectedBody(blackHoleBody);
+        }}
+      >
         <sphereGeometry args={[2.15, 96, 96]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
@@ -561,6 +574,47 @@ function ControlHud() {
   );
 }
 
+function InfoHud() {
+  const selectedBody = useSimulationStore((state) => state.selectedBody);
+  const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
+
+  if (!selectedBody) {
+    return (
+      <HudPanel className="info-panel">
+        <div className="panel-heading">
+          <span>Object Info</span>
+          <span className="mode-name">Ready</span>
+        </div>
+        <p className="info-copy">Click a planet, the Sun, the Moon, or the black hole to see a simple explanation and a short bit of history.</p>
+      </HudPanel>
+    );
+  }
+
+  return (
+    <HudPanel className="info-panel">
+      <div className="info-header-row">
+        <div>
+          <div className="section-title info-title">{selectedBody.name}</div>
+          <div className="info-type">{selectedBody.type}</div>
+        </div>
+        <button type="button" className="info-close-button" onClick={() => setSelectedBody(null)}>Close</button>
+      </div>
+      <div className="info-block">
+        <div className="info-label">What It Is</div>
+        <p className="info-copy">{selectedBody.summary}</p>
+      </div>
+      <div className="info-block">
+        <div className="info-label">A Little History</div>
+        <p className="info-copy">{selectedBody.history}</p>
+      </div>
+      <div className="info-facts">
+        <div className="metric-row"><span>Distance From Sun</span><span className="metric-cyan">{selectedBody.distanceFromSun.toLocaleString()} million km</span></div>
+        <div className="metric-row"><span>Orbital Period</span><span className="metric-amber">{selectedBody.orbitalPeriod === 0 ? "Center object" : `${selectedBody.orbitalPeriod.toLocaleString()} days`}</span></div>
+      </div>
+    </HudPanel>
+  );
+}
+
 function ControlsHint() {
   return (
     <div className="controls-hint">
@@ -577,6 +631,7 @@ export default function App() {
         <div className="hud-top-left"><SpeedHud /></div>
         <div className="hud-top-right"><TimeHud /></div>
         <div className="hud-mid-right"><MiniMap /></div>
+        <div className="hud-mid-left"><InfoHud /></div>
         <div className="hud-bottom-left"><CoordinatesHud /></div>
         <div className="hud-bottom-right"><ControlHud /></div>
         <div className="hud-bottom-center"><ControlsHint /></div>
