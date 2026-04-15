@@ -24,6 +24,87 @@ function HudPanel({ className = "", children }) {
   return <div className={`hud-panel ${className}`}>{children}</div>;
 }
 
+function createSeededRandom(seed) {
+  let value = seed >>> 0;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+
+function createDeepSpaceCatalog() {
+  const random = createSeededRandom(42);
+  const archetypes = [
+    {
+      type: "rogue-planet",
+      label: "Rogue Planet",
+      color: "#7aa4ff",
+      summary: "A rogue planet is a planet-sized body that drifts through space without orbiting a star. It would be dark, cold, and very hard to detect except by reflected light or heat.",
+      history: "Astronomers began finding good rogue-planet candidates in the late 20th and early 21st centuries, showing that planets can exist far from normal solar systems.",
+      scale: [1.2, 2.4],
+    },
+    {
+      type: "ice-body",
+      label: "Ice Giant Fragment",
+      color: "#8ae7ff",
+      summary: "This kind of distant object represents a cold icy world or fragment in deep space. Far from stars, surfaces like this would stay dim and frozen for immense lengths of time.",
+      history: "Modern surveys of the outer Solar System and exoplanet systems keep expanding the list of icy bodies we know, from dwarf planets to distant planetesimals.",
+      scale: [0.8, 1.6],
+    },
+    {
+      type: "dwarf-star",
+      label: "Dim Dwarf Star",
+      color: "#ffb676",
+      summary: "Small cool stars can glow faintly compared with giants like the Sun, but they can live for extremely long times. In deep space they often look like isolated warm points with subtle halos.",
+      history: "Red and brown dwarf stars became much easier to study with modern infrared astronomy, which revealed many faint stars hidden from older sky surveys.",
+      scale: [0.8, 1.4],
+    },
+    {
+      type: "nebula-pocket",
+      label: "Nebula Pocket",
+      color: "#d18cff",
+      summary: "A nebula pocket is a cloud of thin gas and dust. It is far more diffuse than a planet or star, but over huge distances it can glow softly and color the darkness around it.",
+      history: "Nebulae shifted from mysterious smudges in telescopes to major astrophysical laboratories once spectroscopy showed they were vast clouds of gas and dust.",
+      scale: [3.5, 6.5],
+    },
+    {
+      type: "pulsar-remnant",
+      label: "Stellar Remnant",
+      color: "#7cf7d4",
+      summary: "This object stands in for a compact stellar remnant such as a neutron star region or energetic remnant cloud. These leftovers from dead stars are dense, extreme, and scientifically important.",
+      history: "The discovery of pulsars in 1967 revealed a dramatic new class of stellar remnants and helped confirm ideas about neutron stars.",
+      scale: [0.7, 1.2],
+    },
+  ];
+
+  return Array.from({ length: 26 }, (_, index) => {
+    const archetype = archetypes[Math.floor(random() * archetypes.length)];
+    const angle = random() * Math.PI * 2;
+    const pitch = (random() - 0.5) * 0.55;
+    const radius = 900 + random() * 3600;
+    const y = (random() - 0.5) * 900;
+    const scale = archetype.scale[0] + random() * (archetype.scale[1] - archetype.scale[0]);
+    return {
+      id: `deep-${index}`,
+      name: `${archetype.label} ${index + 1}`,
+      type: "deep-space",
+      color: archetype.color,
+      summary: archetype.summary,
+      history: archetype.history,
+      orbitalPeriod: 0,
+      distanceFromSun: Math.round(radius),
+      x: Math.cos(angle) * Math.cos(pitch) * radius,
+      y,
+      z: Math.sin(angle) * Math.cos(pitch) * radius,
+      scale,
+      archetype: archetype.type,
+      spin: 0.0015 + random() * 0.003,
+    };
+  });
+}
+
+const DEEP_SPACE_OBJECTS = createDeepSpaceCatalog();
+
 function SceneBackground() {
   const { scene } = useThree();
 
@@ -225,6 +306,155 @@ function AsteroidBelt({ innerDistance, outerDistance, count, color, geometry = "
         metalness={0.03}
       />
     </instancedMesh>
+  );
+}
+
+function DeepSpaceObject({ object }) {
+  const groupRef = useRef(null);
+  const haloRef = useRef(null);
+  const shipPosition = useSimulationStore((state) => state.shipPosition);
+  const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
+
+  useFrame(({ clock }) => {
+    if (!groupRef.current) {
+      return;
+    }
+    const elapsed = clock.getElapsedTime();
+    groupRef.current.rotation.y += object.spin;
+    groupRef.current.rotation.z += object.spin * 0.35;
+
+    const shipDistance = Math.sqrt(
+      (shipPosition.x - object.x) ** 2 +
+      (shipPosition.y - object.y) ** 2 +
+      (shipPosition.z - object.z) ** 2,
+    );
+    const systemDistance = Math.sqrt(shipPosition.x ** 2 + shipPosition.y ** 2 + shipPosition.z ** 2);
+    const reveal = THREE.MathUtils.clamp((systemDistance - 260) / 900, 0, 1);
+    const proximity = THREE.MathUtils.clamp(1 - shipDistance / 1600, 0.15, 1);
+    const opacity = reveal * proximity;
+
+    if (haloRef.current) {
+      haloRef.current.material.opacity = object.archetype === "nebula-pocket" ? opacity * 0.28 : opacity * 0.22;
+      haloRef.current.scale.setScalar(1 + Math.sin(elapsed * 0.7 + object.scale) * 0.05);
+    }
+    groupRef.current.visible = opacity > 0.02;
+  });
+
+  return (
+    <group ref={groupRef} position={[object.x, object.y, object.z]}>
+      <mesh
+        onClick={(event) => {
+          event.stopPropagation();
+          setSelectedBody(object);
+        }}
+      >
+        {object.archetype === "nebula-pocket" ? (
+          <icosahedronGeometry args={[object.scale, 1]} />
+        ) : object.archetype === "ice-body" ? (
+          <dodecahedronGeometry args={[object.scale, 0]} />
+        ) : (
+          <sphereGeometry args={[object.scale, 28, 28]} />
+        )}
+        <meshStandardMaterial
+          color={object.color}
+          emissive={object.color}
+          emissiveIntensity={object.archetype === "dwarf-star" ? 0.8 : object.archetype === "pulsar-remnant" ? 0.45 : 0.18}
+          roughness={object.archetype === "ice-body" ? 0.35 : 0.82}
+          metalness={object.archetype === "ice-body" ? 0.08 : 0.02}
+          transparent
+          opacity={object.archetype === "nebula-pocket" ? 0.62 : 1}
+        />
+      </mesh>
+      <mesh ref={haloRef}>
+        <sphereGeometry args={[object.scale * (object.archetype === "nebula-pocket" ? 2.7 : 1.8), 24, 24]} />
+        <meshBasicMaterial
+          color={object.color}
+          transparent
+          opacity={object.archetype === "nebula-pocket" ? 0.22 : 0.16}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {object.archetype === "dwarf-star" ? <pointLight color={object.color} intensity={1.2} distance={55} decay={2} /> : null}
+    </group>
+  );
+}
+
+function DeepSpaceObjects() {
+  return (
+    <group>
+      {DEEP_SPACE_OBJECTS.map((object) => (
+        <DeepSpaceObject key={object.id} object={object} />
+      ))}
+    </group>
+  );
+}
+
+function MeteorStream() {
+  const pointsRef = useRef(null);
+  const groupRef = useRef(null);
+  const shipPosition = useSimulationStore((state) => state.shipPosition);
+  const velocityFraction = useSimulationStore((state) => state.velocityFraction);
+
+  const particles = useMemo(() => {
+    return Array.from({ length: 90 }, () => ({
+      position: new THREE.Vector3(
+        (Math.random() - 0.5) * 140,
+        (Math.random() - 0.5) * 90,
+        (Math.random() - 0.5) * 160,
+      ),
+      speed: 18 + Math.random() * 90,
+      drift: (Math.random() - 0.5) * 8,
+    }));
+  }, []);
+
+  const positions = useMemo(() => new Float32Array(particles.length * 3), [particles.length]);
+
+  useFrame((_, delta) => {
+    if (!pointsRef.current || !groupRef.current) {
+      return;
+    }
+
+    groupRef.current.position.set(shipPosition.x, shipPosition.y, shipPosition.z);
+
+    particles.forEach((particle, index) => {
+      particle.position.z += particle.speed * delta * (0.6 + velocityFraction * 4);
+      particle.position.x += particle.drift * delta;
+
+      if (particle.position.z > 70) {
+        particle.position.set(
+          (Math.random() - 0.5) * 140,
+          (Math.random() - 0.5) * 90,
+          -120 - Math.random() * 120,
+        );
+      }
+
+      positions[index * 3] = particle.position.x;
+      positions[index * 3 + 1] = particle.position.y;
+      positions[index * 3 + 2] = particle.position.z;
+    });
+
+    pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    pointsRef.current.material.opacity = THREE.MathUtils.clamp((velocityFraction - 0.02) * 2.2, 0.08, 0.75);
+  });
+
+  useEffect(() => {
+    particles.forEach((particle, index) => {
+      positions[index * 3] = particle.position.x;
+      positions[index * 3 + 1] = particle.position.y;
+      positions[index * 3 + 2] = particle.position.z;
+    });
+  }, [particles, positions]);
+
+  return (
+    <group ref={groupRef}>
+      <points ref={pointsRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" count={particles.length} array={positions} itemSize={3} />
+        </bufferGeometry>
+        <pointsMaterial color="#dff7ff" size={1.2} transparent opacity={0.18} sizeAttenuation depthWrite={false} />
+      </points>
+    </group>
   );
 }
 
@@ -466,6 +696,8 @@ function Scene() {
       <ambientLight intensity={0.1} />
       <directionalLight position={[10, 10, 10]} intensity={0.5} />
       <SolarSystem />
+      <DeepSpaceObjects />
+      <MeteorStream />
       <WormholeEffect />
       <Ship />
       {cameraMode === "free" ? <OrbitControls enableDamping dampingFactor={0.05} maxDistance={3500} /> : null}
