@@ -57,6 +57,7 @@ function SceneBackground() {
 }
 
 function PlanetBody({ body }) {
+  const bodyRef = useRef(null);
   const meshRef = useRef(null);
   const cloudRef = useRef(null);
   const orbitRef = useRef(body.initialAngle ?? 0);
@@ -77,7 +78,7 @@ function PlanetBody({ body }) {
   }, [body.distanceFromSun, body.type, distance]);
 
   useFrame(({ clock }) => {
-    if (!meshRef.current) {
+    if (!bodyRef.current || !meshRef.current) {
       return;
     }
     if (body.orbitalPeriod === 0) {
@@ -93,14 +94,14 @@ function PlanetBody({ body }) {
       if (parent) {
         const parentDistance = getScaledDistance(parent.distanceFromSun);
         const parentAngle = (parent.initialAngle ?? 0) + clock.getElapsedTime() * ((2 * Math.PI) / (10 * parent.orbitalPeriod));
-        meshRef.current.position.set(
+        bodyRef.current.position.set(
           Math.cos(parentAngle) * parentDistance + 1.2 * Math.cos(angle * 10),
           0,
           Math.sin(parentAngle) * parentDistance + 1.2 * Math.sin(angle * 10),
         );
       }
     } else {
-      meshRef.current.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
+      bodyRef.current.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
     }
     meshRef.current.rotation.y += 0.004;
     if (cloudRef.current) {
@@ -113,46 +114,48 @@ function PlanetBody({ body }) {
   return (
     <group>
       {orbitPoints ? <Line points={orbitPoints} color="#415063" lineWidth={1} transparent opacity={0.35} /> : null}
-      <mesh ref={meshRef} position={position}>
-        <sphereGeometry args={[radius, 64, 64]} />
+      <group ref={bodyRef} position={position}>
+        <mesh ref={meshRef}>
+          <sphereGeometry args={[radius, 64, 64]} />
+          {body.type === "star" ? (
+            <meshBasicMaterial map={textures.planets.sun} color={body.color} />
+          ) : (
+            <meshStandardMaterial
+              map={textures.planets[body.id]}
+              color={body.color}
+              emissive={body.id === "earth" ? "#17358d" : body.color}
+              emissiveIntensity={body.id === "earth" ? 0.1 : 0.03}
+              roughness={body.id === "mercury" || body.id === "moon" ? 0.95 : 0.82}
+              metalness={0.02}
+            />
+          )}
+        </mesh>
+        {body.id === "earth" ? (
+          <mesh ref={cloudRef}>
+            <sphereGeometry args={[radius * 1.026, 64, 64]} />
+            <meshStandardMaterial map={textures.earthClouds} transparent opacity={0.35} depthWrite={false} roughness={1} metalness={0} />
+          </mesh>
+        ) : null}
         {body.type === "star" ? (
-          <meshBasicMaterial map={textures.planets.sun} color={body.color} />
-        ) : (
-          <meshStandardMaterial
-            map={textures.planets[body.id]}
-            color={body.color}
-            emissive={body.id === "earth" ? "#17358d" : body.color}
-            emissiveIntensity={body.id === "earth" ? 0.1 : 0.03}
-            roughness={body.id === "mercury" || body.id === "moon" ? 0.95 : 0.82}
-            metalness={0.02}
-          />
-        )}
-      </mesh>
-      {body.id === "earth" ? (
-        <mesh ref={cloudRef} position={position}>
-          <sphereGeometry args={[radius * 1.026, 64, 64]} />
-          <meshStandardMaterial map={textures.earthClouds} transparent opacity={0.35} depthWrite={false} roughness={1} metalness={0} />
-        </mesh>
-      ) : null}
-      {body.type === "star" ? (
-        <>
-          <pointLight position={[0, 0, 0]} color="#fff5e0" intensity={3} distance={220} decay={1} />
-          <mesh><sphereGeometry args={[radius * 1.12, 32, 32]} /><meshBasicMaterial color="#ffd96a" transparent opacity={0.3} /></mesh>
-          <mesh><sphereGeometry args={[radius * 1.32, 32, 32]} /><meshBasicMaterial color="#ff9c37" transparent opacity={0.16} /></mesh>
-        </>
-      ) : null}
-      {body.id === "saturn" ? (
-        <mesh position={position} rotation={[Math.PI / 2.5, 0, 0]}>
-          <ringGeometry args={[radius * 1.4, radius * 2.1, 128]} />
-          <meshStandardMaterial map={textures.saturnRing} color="#d8c6a2" side={THREE.DoubleSide} transparent opacity={0.82} alphaTest={0.08} />
-        </mesh>
-      ) : null}
-      {body.id === "uranus" ? (
-        <mesh position={position} rotation={[Math.PI / 2, 0, Math.PI / 2]}>
-          <ringGeometry args={[radius * 1.5, radius * 2, 64]} />
-          <meshStandardMaterial map={textures.uranusRing} color="#8ea5aa" side={THREE.DoubleSide} transparent opacity={0.28} alphaTest={0.04} />
-        </mesh>
-      ) : null}
+          <>
+            <pointLight position={[0, 0, 0]} color="#fff5e0" intensity={3} distance={220} decay={1} />
+            <mesh><sphereGeometry args={[radius * 1.12, 32, 32]} /><meshBasicMaterial color="#ffd96a" transparent opacity={0.3} /></mesh>
+            <mesh><sphereGeometry args={[radius * 1.32, 32, 32]} /><meshBasicMaterial color="#ff9c37" transparent opacity={0.16} /></mesh>
+          </>
+        ) : null}
+        {body.id === "saturn" ? (
+          <mesh rotation={[Math.PI / 2.5, 0, 0]}>
+            <ringGeometry args={[radius * 1.4, radius * 2.1, 128]} />
+            <meshStandardMaterial map={textures.saturnRing} color="#d8c6a2" side={THREE.DoubleSide} transparent opacity={0.82} alphaTest={0.08} />
+          </mesh>
+        ) : null}
+        {body.id === "uranus" ? (
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]}>
+            <ringGeometry args={[radius * 1.5, radius * 2, 64]} />
+            <meshStandardMaterial map={textures.uranusRing} color="#8ea5aa" side={THREE.DoubleSide} transparent opacity={0.28} alphaTest={0.04} />
+          </mesh>
+        ) : null}
+      </group>
     </group>
   );
 }
