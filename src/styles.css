@@ -1,0 +1,267 @@
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #ebeff5;
+  background: #000205;
+  --background: #000205;
+  --foreground: #ebeff5;
+  --primary: #00c7c8;
+  --muted: #11161f;
+  --muted-foreground: #88909c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(33, 79, 117, 0.18), transparent 32%),
+    radial-gradient(circle at 85% 30%, rgba(0, 199, 200, 0.08), transparent 24%),
+    #000205;
+  color: var(--foreground);
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--background);
+}
+
+.scene-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.hud-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud-top-left,
+.hud-top-right,
+.hud-mid-right,
+.hud-bottom-left,
+.hud-bottom-right,
+.hud-bottom-center {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.hud-top-left { top: 1rem; left: 1rem; }
+.hud-top-right { top: 1rem; right: 1rem; }
+.hud-mid-right { top: 50%; right: 1rem; transform: translateY(-50%); }
+.hud-bottom-left { left: 1rem; bottom: 1rem; }
+.hud-bottom-right { right: 1rem; bottom: 1rem; }
+.hud-bottom-center { left: 50%; bottom: 5rem; transform: translateX(-50%); }
+
+.hud-panel,
+.controls-hint {
+  border: 1px solid rgba(0, 199, 200, 0.24);
+  border-radius: 0.75rem;
+  background: rgba(0, 2, 5, 0.74);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.hud-panel { padding: 1rem; }
+.speed-panel { min-width: 280px; }
+.map-panel { min-width: 170px; padding: 0.75rem; }
+.time-panel,
+.coord-panel { min-width: 200px; }
+
+.panel-heading,
+.metric-row,
+.coordinate-row,
+.fps-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-heading,
+.section-title {
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(0, 199, 200, 0.14);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.mode-name,
+.metric-cyan,
+.metric-amber,
+.metric-blue,
+.metric-green,
+.distance-label span,
+.fps-label span,
+.coordinates-grid span:last-child,
+.mono {
+  font-family: "Consolas", "SFMono-Regular", monospace;
+}
+
+.mode-name { color: var(--primary); font-weight: 700; }
+.metric-list,
+.coordinates-grid { display: grid; gap: 0.55rem; font-size: 0.78rem; }
+.metric-row,
+.coordinate-row { gap: 1rem; color: var(--muted-foreground); }
+.metric-cyan { color: #53eafd; }
+.metric-amber { color: #ffb84d; }
+.metric-blue { color: #54a2ff; }
+.metric-green { color: #05df72; }
+
+.progress-track {
+  height: 0.5rem;
+  margin: 0.75rem 0 0.9rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #11161f;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00d2ef, #00c7c8);
+  transition: width 0.2s ease;
+}
+
+.speed-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.mode-button,
+.secondary-button,
+.pause-button,
+.reset-button {
+  border-radius: 0.45rem;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.mode-button {
+  padding: 0.35rem 0.5rem;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.74rem;
+}
+
+.mode-button.active { background: var(--primary); color: #010309; }
+.mode-button:hover,
+.secondary-button:hover,
+.pause-button:hover,
+.reset-button:hover { transform: translateY(-1px); }
+
+.secondary-button {
+  width: 100%;
+  padding: 0.45rem 0.7rem;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.74rem;
+}
+
+.control-buttons { display: flex; gap: 0.5rem; }
+.control-buttons .secondary-button,
+.pause-button,
+.reset-button { width: auto; padding: 0.45rem 0.75rem; }
+.pause-button { background: #b76b00; color: white; }
+.reset-button { background: rgba(212, 9, 36, 0.85); color: white; }
+
+.solar-map {
+  position: relative;
+  width: 8rem;
+  height: 8rem;
+  margin: 0 auto 0.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(0, 199, 200, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border: 1px solid rgba(83, 234, 253, 0.16);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.orbit-outer { width: 88%; height: 88%; }
+.orbit-inner { width: 56%; height: 56%; }
+
+.map-dot {
+  position: absolute;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.sun-dot { background: #ffe02a; box-shadow: 0 0 8px rgba(253, 224, 71, 0.8); }
+.black-hole-dot { background: #ef4444; box-shadow: 0 0 7px rgba(239, 68, 68, 0.7); }
+.ship-dot { background: #22d3ee; box-shadow: 0 0 9px rgba(34, 211, 238, 0.95); }
+
+.distance-label,
+.fps-label,
+.controls-hint { font-size: 0.72rem; color: var(--muted-foreground); }
+.distance-label { margin-bottom: 0.6rem; text-align: center; }
+.legend-label { display: flex; align-items: center; gap: 0.5rem; }
+.dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; }
+.dot.blue { background: #3080ff; }
+.dot.green { background: #00c758; }
+.axis-x { color: #ff6568; }
+.axis-y { color: #05df72; }
+.axis-z { color: #54a2ff; }
+.controls-hint { padding: 0.65rem 1rem; text-align: center; }
+
+@media (max-width: 960px) {
+  .hud-layer {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    overflow: auto;
+  }
+
+  .hud-top-left,
+  .hud-top-right,
+  .hud-mid-right,
+  .hud-bottom-left,
+  .hud-bottom-right,
+  .hud-bottom-center {
+    position: static;
+    transform: none;
+  }
+
+  .speed-panel,
+  .map-panel,
+  .time-panel,
+  .coord-panel { min-width: 0; }
+
+  .control-buttons { flex-wrap: wrap; }
+  .control-buttons .secondary-button,
+  .pause-button,
+  .reset-button { flex: 1 1 30%; }
+}
