@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-function createCanvas(width = 1024, height = width) {
+function createCanvas(width = 768, height = width) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -12,7 +12,7 @@ function makeColorTexture(canvas) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.anisotropy = 8;
+  texture.anisotropy = 4;
   texture.needsUpdate = true;
   return texture;
 }
@@ -22,7 +22,7 @@ function makeDataTexture(canvas) {
   texture.colorSpace = THREE.NoColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.anisotropy = 8;
+  texture.anisotropy = 4;
   texture.needsUpdate = true;
   return texture;
 }

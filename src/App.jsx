@@ -6,8 +6,10 @@ import {
   CELESTIAL_BODIES,
   SPEED_MODES,
   getBlackHoleScenePosition,
+  getOrbitalPosition,
   getScaledDistance,
   getScaledRadius,
+  getScaledSatelliteDistance,
   useSimulationStore,
 } from "./simulation";
 import { createBodyTextures } from "./textures";
@@ -29,8 +31,8 @@ function SceneBackground() {
 
   useEffect(() => {
     const canvas = document.createElement("canvas");
-    canvas.width = 2048;
-    canvas.height = 2048;
+    canvas.width = 1024;
+    canvas.height = 1024;
     const context = canvas.getContext("2d");
     if (!context) {
       return undefined;
@@ -38,7 +40,7 @@ function SceneBackground() {
 
     context.fillStyle = "#03050b";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < 5000; i += 1) {
+    for (let i = 0; i < 2200; i += 1) {
       const x = Math.random() * canvas.width;
       const y = Math.random() * canvas.height;
       const radius = Math.random() * 1.6;
@@ -60,112 +62,117 @@ function PlanetBody({ body }) {
   const bodyRef = useRef(null);
   const meshRef = useRef(null);
   const cloudRef = useRef(null);
-  const orbitRef = useRef(body.initialAngle ?? 0);
   const radius = getScaledRadius(body.radius, body.type);
-  const distance = getScaledDistance(body.distanceFromSun);
+  const parentBody = body.parentId ? CELESTIAL_BODIES.find((item) => item.id === body.parentId) : null;
+  const parentRadius = parentBody ? getScaledRadius(parentBody.radius, parentBody.type) : 0;
+  const orbitDistance = body.type === "moon" ? getScaledSatelliteDistance(body.distanceFromParent, parentRadius) : getScaledDistance(body.distanceFromSun);
+  const axialTilt = ((body.axialTilt ?? 0) * Math.PI) / 180;
+  const detailSegments = body.type === "star" || radius > 2.5 ? 48 : radius > 0.6 ? 40 : 28;
   const textures = useMemo(() => createBodyTextures(), []);
   const planetTextures = textures.planets[body.id];
   const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
+
+  const getBodyPosition = (elapsedSeconds = 0) => {
+    if (body.type === "moon" && parentBody) {
+      const parentPosition = getOrbitalPosition(parentBody, elapsedSeconds);
+      return getOrbitalPosition(body, elapsedSeconds, parentPosition, orbitDistance);
+    }
+    if (body.distanceFromSun === 0 || body.type === "moon") {
+      return { x: 0, y: 0, z: 0 };
+    }
+    return getOrbitalPosition(body, elapsedSeconds, { x: 0, y: 0, z: 0 }, orbitDistance);
+  };
 
   const orbitPoints = useMemo(() => {
     if (body.distanceFromSun === 0 || body.type === "moon") {
       return null;
     }
     const points = [];
-    for (let step = 0; step <= 256; step += 1) {
-      const angle = (step / 256) * Math.PI * 2;
-      points.push([Math.cos(angle) * distance, 0, Math.sin(angle) * distance]);
+    const center = { x: 0, y: 0, z: 0 };
+    const parentCenter = parentBody ? getOrbitalPosition(parentBody, 0) : center;
+    const steps = body.type === "moon" ? 96 : 192;
+    for (let step = 0; step <= steps; step += 1) {
+      const orbitBody = { ...body, initialAngle: (step / steps) * Math.PI * 2, orbitalPeriod: 1 };
+      const position = getOrbitalPosition(orbitBody, 0, parentBody ? parentCenter : center, orbitDistance);
+      points.push([position.x, position.y, position.z]);
     }
     return points;
-  }, [body.distanceFromSun, body.type, distance]);
+  }, [body, orbitDistance, parentBody]);
 
   useFrame(({ clock }) => {
     if (!bodyRef.current || !meshRef.current) {
       return;
     }
     if (body.orbitalPeriod === 0) {
-      meshRef.current.rotation.y += 0.002;
+      meshRef.current.rotation.y += 0.0014;
       return;
     }
 
-    const speed = (2 * Math.PI) / (10 * body.orbitalPeriod);
-    const angle = orbitRef.current + clock.getElapsedTime() * speed;
-
-    if (body.type === "moon" && body.parentId) {
-      const parent = CELESTIAL_BODIES.find((item) => item.id === body.parentId);
-      if (parent) {
-        const parentDistance = getScaledDistance(parent.distanceFromSun);
-        const parentAngle = (parent.initialAngle ?? 0) + clock.getElapsedTime() * ((2 * Math.PI) / (10 * parent.orbitalPeriod));
-        bodyRef.current.position.set(
-          Math.cos(parentAngle) * parentDistance + 1.2 * Math.cos(angle * 10),
-          0,
-          Math.sin(parentAngle) * parentDistance + 1.2 * Math.sin(angle * 10),
-        );
-      }
-    } else {
-      bodyRef.current.position.set(Math.cos(angle) * distance, 0, Math.sin(angle) * distance);
-    }
-    meshRef.current.rotation.y += 0.004;
+    const position = getBodyPosition(clock.getElapsedTime());
+    bodyRef.current.position.set(position.x, position.y, position.z);
+    meshRef.current.rotation.y += body.id === "venus" ? -0.0012 : 0.0028;
     if (cloudRef.current) {
-      cloudRef.current.rotation.y += 0.0055;
+      cloudRef.current.rotation.y += 0.0036;
     }
   });
 
-  const position = body.distanceFromSun > 0 ? [Math.cos(orbitRef.current) * distance, 0, Math.sin(orbitRef.current) * distance] : [0, 0, 0];
+  const initialPosition = getBodyPosition(0);
 
   return (
     <group>
-      {orbitPoints ? <Line points={orbitPoints} color="#415063" lineWidth={1} transparent opacity={0.35} /> : null}
-      <group ref={bodyRef} position={position}>
-        <mesh
-          ref={meshRef}
-          onClick={(event) => {
-            event.stopPropagation();
-            setSelectedBody(body);
-          }}
-        >
-          <sphereGeometry args={[radius, 64, 64]} />
-          {body.type === "star" ? (
-            <meshBasicMaterial map={planetTextures.map} color={body.color} />
-          ) : (
-            <meshStandardMaterial
-              map={planetTextures.map}
-              bumpMap={planetTextures.bumpMap}
-              bumpScale={body.id === "mercury" ? 0.12 : body.id === "moon" ? 0.1 : body.id === "mars" ? 0.05 : body.id === "earth" ? 0.03 : 0.015}
-              roughnessMap={planetTextures.roughnessMap}
-              emissiveMap={planetTextures.emissiveMap}
-              color={body.color}
-              emissive={body.id === "earth" ? "#17358d" : body.color}
-              emissiveIntensity={body.id === "earth" ? 0.22 : body.type === "planet" ? 0.02 : 0}
-              roughness={body.id === "earth" ? 0.72 : body.id === "jupiter" || body.id === "saturn" ? 0.82 : body.id === "uranus" || body.id === "neptune" ? 0.68 : 0.9}
-              metalness={0.01}
-            />
-          )}
-        </mesh>
-        {body.id === "earth" ? (
-          <mesh ref={cloudRef}>
-            <sphereGeometry args={[radius * 1.026, 64, 64]} />
-            <meshStandardMaterial map={planetTextures.cloudMap} transparent opacity={0.42} depthWrite={false} roughness={1} metalness={0} />
+      {orbitPoints ? <Line points={orbitPoints} color={body.type === "moon" ? "#6d7887" : "#415063"} lineWidth={1} transparent opacity={body.type === "moon" ? 0.26 : 0.32} /> : null}
+      <group ref={bodyRef} position={[initialPosition.x, initialPosition.y, initialPosition.z]}>
+        <group rotation={[0, 0, axialTilt]}>
+          <mesh
+            ref={meshRef}
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelectedBody(body);
+            }}
+          >
+            <sphereGeometry args={[radius, detailSegments, detailSegments]} />
+            {body.type === "star" ? (
+              <meshBasicMaterial map={planetTextures.map} color={body.color} />
+            ) : (
+              <meshStandardMaterial
+                map={planetTextures.map}
+                bumpMap={planetTextures.bumpMap}
+                bumpScale={body.id === "mercury" ? 0.12 : body.id === "moon" ? 0.1 : body.id === "mars" ? 0.05 : body.id === "earth" ? 0.03 : 0.015}
+                roughnessMap={planetTextures.roughnessMap}
+                emissiveMap={planetTextures.emissiveMap}
+                color={body.color}
+                emissive={body.id === "earth" ? "#17358d" : body.color}
+                emissiveIntensity={body.id === "earth" ? 0.22 : body.type === "planet" ? 0.012 : 0}
+                roughness={body.id === "earth" ? 0.72 : body.id === "jupiter" || body.id === "saturn" ? 0.82 : body.id === "uranus" || body.id === "neptune" ? 0.68 : 0.9}
+                metalness={0.01}
+              />
+            )}
           </mesh>
-        ) : null}
+          {body.id === "earth" ? (
+            <mesh ref={cloudRef}>
+              <sphereGeometry args={[radius * 1.026, detailSegments, detailSegments]} />
+              <meshStandardMaterial map={planetTextures.cloudMap} transparent opacity={0.38} depthWrite={false} roughness={1} metalness={0} />
+            </mesh>
+          ) : null}
+          {body.id === "saturn" ? (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[radius * 1.25, radius * 2.35, 128]} />
+              <meshStandardMaterial map={textures.saturnRing.map} alphaMap={textures.saturnRing.alphaMap} color="#d8c6a2" side={THREE.DoubleSide} transparent opacity={0.86} alphaTest={0.18} />
+            </mesh>
+          ) : null}
+          {body.id === "uranus" ? (
+            <mesh rotation={[Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[radius * 1.45, radius * 1.95, 80]} />
+              <meshStandardMaterial map={textures.uranusRing.map} alphaMap={textures.uranusRing.alphaMap} color="#8ea5aa" side={THREE.DoubleSide} transparent opacity={0.3} alphaTest={0.12} />
+            </mesh>
+          ) : null}
+        </group>
         {body.type === "star" ? (
           <>
-            <pointLight position={[0, 0, 0]} color="#fff5e0" intensity={3} distance={220} decay={1} />
+            <pointLight position={[0, 0, 0]} color="#fff5e0" intensity={3.8} distance={240} decay={1} />
             <mesh><sphereGeometry args={[radius * 1.12, 32, 32]} /><meshBasicMaterial color="#ffd96a" transparent opacity={0.3} /></mesh>
             <mesh><sphereGeometry args={[radius * 1.32, 32, 32]} /><meshBasicMaterial color="#ff9c37" transparent opacity={0.16} /></mesh>
           </>
-        ) : null}
-        {body.id === "saturn" ? (
-          <mesh rotation={[Math.PI / 2.5, 0, 0]}>
-            <ringGeometry args={[radius * 1.4, radius * 2.1, 128]} />
-            <meshStandardMaterial map={textures.saturnRing.map} alphaMap={textures.saturnRing.alphaMap} color="#d8c6a2" side={THREE.DoubleSide} transparent opacity={0.9} alphaTest={0.18} />
-          </mesh>
-        ) : null}
-        {body.id === "uranus" ? (
-          <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]}>
-            <ringGeometry args={[radius * 1.5, radius * 2, 64]} />
-            <meshStandardMaterial map={textures.uranusRing.map} alphaMap={textures.uranusRing.alphaMap} color="#8ea5aa" side={THREE.DoubleSide} transparent opacity={0.34} alphaTest={0.12} />
-          </mesh>
         ) : null}
       </group>
     </group>
@@ -300,6 +307,7 @@ function WormholeEffect() {
 function Ship() {
   const shipRef = useRef(null);
   const rotationRef = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
+  const maneuverLeanRef = useRef({ pitch: 0, roll: 0 });
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
   const positionRef = useRef(new THREE.Vector3(0, 5, 50));
   const throttleRef = useRef(0);
@@ -396,6 +404,11 @@ function Ship() {
     if (keys.rollLeft) rotationRef.current.z += turnStep;
     if (keys.rollRight) rotationRef.current.z -= turnStep;
 
+    const targetRoll = (keys.left ? 0.42 : 0) + (keys.right ? -0.42 : 0);
+    const targetPitch = (keys.up ? -0.2 : 0) + (keys.down ? 0.2 : 0);
+    maneuverLeanRef.current.roll = THREE.MathUtils.lerp(maneuverLeanRef.current.roll, targetRoll, 0.08);
+    maneuverLeanRef.current.pitch = THREE.MathUtils.lerp(maneuverLeanRef.current.pitch, targetPitch, 0.08);
+
     const forward = new THREE.Vector3(0, 0, -1).applyEuler(rotationRef.current);
     const up = new THREE.Vector3(0, 1, 0).applyEuler(rotationRef.current);
 
@@ -418,9 +431,11 @@ function Ship() {
 
     shipRef.current.position.copy(positionRef.current);
     shipRef.current.rotation.copy(rotationRef.current);
+    shipRef.current.rotateX(maneuverLeanRef.current.pitch);
+    shipRef.current.rotateZ(maneuverLeanRef.current.roll);
 
     if (cameraMode === "follow") {
-      const cameraOffset = new THREE.Vector3(0, 2, 8).applyEuler(rotationRef.current);
+      const cameraOffset = new THREE.Vector3(0, 0.85, 3.4).applyEuler(rotationRef.current);
       const cameraPosition = positionRef.current.clone().add(cameraOffset);
       camera.position.lerp(cameraPosition, 0.1);
       camera.lookAt(positionRef.current);
@@ -431,7 +446,7 @@ function Ship() {
   });
 
   return (
-    <group ref={shipRef} position={[0, 5, 50]}>
+    <group ref={shipRef} position={[0, 5, 50]} scale={0.22}>
       <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.26, 0.34, 1.9, 24]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.8} roughness={0.22} /></mesh>
       <mesh position={[0, 0, -1.12]}><coneGeometry args={[0.26, 0.62, 24]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#c7d1dd" metalness={0.82} roughness={0.18} /></mesh>
       <mesh position={[0, 0, 0.95]} rotation={[Math.PI, 0, 0]}><coneGeometry args={[0.3, 0.45, 20]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.8} roughness={0.22} /></mesh>
@@ -451,8 +466,8 @@ function SolarSystem() {
     <group>
       <ambientLight intensity={0.12} />
       {CELESTIAL_BODIES.filter((body) => body.type !== "blackhole").map((body) => <PlanetBody key={body.id} body={body} />)}
-      <AsteroidBelt innerDistance={getScaledDistance(300)} outerDistance={getScaledDistance(500)} count={800} color="#6b6b6b" />
-      <AsteroidBelt innerDistance={getScaledDistance(4600)} outerDistance={getScaledDistance(8000)} count={500} color="#4a4a5a" geometry="icosahedron" />
+      <AsteroidBelt innerDistance={getScaledDistance(300)} outerDistance={getScaledDistance(500)} count={520} color="#6b6b6b" />
+      <AsteroidBelt innerDistance={getScaledDistance(4600)} outerDistance={getScaledDistance(8000)} count={320} color="#4a4a5a" geometry="icosahedron" />
     </group>
   );
 }
@@ -462,7 +477,7 @@ function Scene() {
   return (
     <>
       <SceneBackground />
-      <Stars radius={300} depth={100} count={10000} factor={6} saturation={0} fade speed={0.5} />
+      <Stars radius={300} depth={100} count={4500} factor={5} saturation={0} fade speed={0.25} />
       <ambientLight intensity={0.1} />
       <directionalLight position={[10, 10, 10]} intensity={0.5} />
       <SolarSystem />
@@ -475,7 +490,13 @@ function Scene() {
 
 function MainScene() {
   return (
-    <Canvas camera={{ position: [0, 10, 60], fov: 75, near: 0.1, far: 10000 }} className="scene-canvas">
+    <Canvas
+      camera={{ position: [0, 10, 60], fov: 75, near: 0.1, far: 10000 }}
+      dpr={[1, 1.5]}
+      gl={{ antialias: true, powerPreference: "high-performance" }}
+      performance={{ min: 0.5 }}
+      className="scene-canvas"
+    >
       <Suspense fallback={null}>
         <Scene />
       </Suspense>
@@ -621,6 +642,11 @@ function InfoHud() {
     return null;
   }
 
+  const parentBody = selectedBody.parentId ? CELESTIAL_BODIES.find((body) => body.id === selectedBody.parentId) : null;
+  const distanceLabel = parentBody
+    ? `${selectedBody.distanceFromParent.toLocaleString()} million km from ${parentBody.name}`
+    : `${selectedBody.distanceFromSun.toLocaleString()} million km`;
+
   return (
     <HudPanel className="info-panel">
       <div className="info-header-row">
@@ -639,8 +665,12 @@ function InfoHud() {
         <p className="info-copy">{selectedBody.history}</p>
       </div>
       <div className="info-facts">
-        <div className="metric-row"><span>Distance From Sun</span><span className="metric-cyan">{selectedBody.distanceFromSun.toLocaleString()} million km</span></div>
+        <div className="metric-row"><span>{parentBody ? "Parent Distance" : "Distance From Sun"}</span><span className="metric-cyan">{distanceLabel}</span></div>
+        <div className="metric-row"><span>Radius</span><span className="metric-blue">{selectedBody.radius.toLocaleString()} km</span></div>
         <div className="metric-row"><span>Orbital Period</span><span className="metric-amber">{selectedBody.orbitalPeriod === 0 ? "Center object" : `${selectedBody.orbitalPeriod.toLocaleString()} days`}</span></div>
+        <div className="metric-row"><span>Inclination</span><span className="metric-green">{`${(selectedBody.orbitalInclination ?? 0).toFixed(1)} deg`}</span></div>
+        <div className="metric-row"><span>Eccentricity</span><span className="metric-cyan">{(selectedBody.orbitalEccentricity ?? 0).toFixed(3)}</span></div>
+        <div className="metric-row"><span>Axial Tilt</span><span className="metric-amber">{`${(selectedBody.axialTilt ?? 0).toFixed(1)} deg`}</span></div>
       </div>
     </HudPanel>
   );
