@@ -13,7 +13,7 @@ export const ORBIT_DAYS_PER_SECOND = 8;
 const EARTH_RADIUS_KM = 6371;
 const EARTH_SCENE_RADIUS = 1;
 const DEG_TO_RAD = Math.PI / 180;
-const BLACK_HOLE_NAVIGATION_DISTANCE = 1260;
+const BLACK_HOLE_NAVIGATION_DISTANCE = 2520;
 
 export const CELESTIAL_BODIES = [
   { id: "sun", name: "Sun", radius: 696340, distanceFromSun: 0, orbitalPeriod: 0, orbitalInclination: 0, orbitalEccentricity: 0, axialTilt: 7.25, color: "#fdb813", type: "star", initialAngle: 0, summary: "The Sun is the star at the center of our Solar System. It produces the light and heat that make life on Earth possible through nuclear fusion in its core.", history: "People have watched and worshipped the Sun since prehistory. Modern science showed in the 19th and 20th centuries that it is a star powered by fusion rather than fire." },
