@@ -193,6 +193,12 @@ button {
   font-size: 0.74rem;
 }
 
+.black-hole-button {
+  margin-bottom: 0.45rem;
+  background: rgba(121, 28, 35, 0.9);
+  color: #ffd6d6;
+}
+
 .control-buttons { display: flex; gap: 0.5rem; }
 .control-buttons .secondary-button,
 .pause-button,

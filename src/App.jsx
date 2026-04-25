@@ -275,7 +275,7 @@ function WormholeEffect() {
     }
     const ship = new THREE.Vector3(shipPosition.x, shipPosition.y, shipPosition.z);
     const blackHole = new THREE.Vector3(target.x, target.y, target.z);
-    if (ship.distanceTo(blackHole) < 3 && !isInWormhole && !timeoutRef.current) {
+    if (ship.distanceTo(blackHole) < 18 && !isInWormhole && !timeoutRef.current) {
       triggerWormhole();
       timeoutRef.current = window.setTimeout(() => {
         completeWormhole();
@@ -292,28 +292,28 @@ function WormholeEffect() {
           setSelectedBody(blackHoleBody);
         }}
       >
-        <sphereGeometry args={[2.15, 96, 96]} />
+        <sphereGeometry args={[4, 80, 80]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
       <mesh ref={eventHorizonRef} rotation={[Math.PI / 2.45, 0.28, 0]}>
-        <ringGeometry args={[2.8, 7.5, 192]} />
+        <ringGeometry args={[5.2, 13, 160]} />
         <meshStandardMaterial color="#ffffff" emissive="#ff7a18" emissiveIntensity={2.5} transparent opacity={0.92} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
       </mesh>
       <mesh rotation={[Math.PI / 2.45, 0.28, 0]}>
-        <ringGeometry args={[7.3, 15, 192]} />
+        <ringGeometry args={[12.8, 26, 160]} />
         <meshStandardMaterial color="#ffffff" emissive="#892cdc" emissiveIntensity={1.25} transparent opacity={0.5} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
       </mesh>
       <mesh ref={pulseRef}>
-        <sphereGeometry args={[2.5, 96, 96]} />
+        <sphereGeometry args={[4.7, 56, 56]} />
         <meshBasicMaterial color="#ff641f" transparent opacity={0.24} blending={THREE.AdditiveBlending} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[32, 40, 40]} />
+        <sphereGeometry args={[46, 36, 36]} />
         <meshBasicMaterial color="#060611" transparent opacity={0.36} side={THREE.BackSide} />
       </mesh>
-      <pointLight color="#ff6600" intensity={4} distance={90} decay={2} />
-      <pointLight color="#00ffff" intensity={2.5} distance={60} decay={2} position={[0, 12, 0]} />
-      <pointLight color="#00ffff" intensity={2.5} distance={60} decay={2} position={[0, -12, 0]} />
+      <pointLight color="#ff6600" intensity={6} distance={150} decay={2} />
+      <pointLight color="#00ffff" intensity={3.2} distance={110} decay={2} position={[0, 16, 0]} />
+      <pointLight color="#00ffff" intensity={3.2} distance={110} decay={2} position={[0, -16, 0]} />
     </group>
   );
 }
@@ -556,6 +556,7 @@ function SpeedHud() {
 function MiniMap() {
   const shipPosition = useSimulationStore((state) => state.shipPosition);
   const returnToSolarSystem = useSimulationStore((state) => state.returnToSolarSystem);
+  const jumpToBlackHole = useSimulationStore((state) => state.jumpToBlackHole);
   const blackHole = getBlackHoleScenePosition();
   const maxExtent = Math.max(
     60,
@@ -609,6 +610,7 @@ function MiniMap() {
         <div className="metric-row"><span>Black Hole Range</span><span className="metric-amber">{blackHoleDistance.toFixed(1)}</span></div>
       </div>
       <p className="map-caption">Follow the cyan route from your ship toward the red black-hole marker.</p>
+      <button type="button" className="secondary-button black-hole-button" onClick={jumpToBlackHole}>Jump to Black Hole</button>
       <button type="button" className="secondary-button" onClick={returnToSolarSystem}>Snap Back to Solar System</button>
     </HudPanel>
   );

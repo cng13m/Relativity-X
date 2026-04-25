@@ -13,6 +13,7 @@ export const ORBIT_DAYS_PER_SECOND = 8;
 const EARTH_RADIUS_KM = 6371;
 const EARTH_SCENE_RADIUS = 1;
 const DEG_TO_RAD = Math.PI / 180;
+const BLACK_HOLE_NAVIGATION_DISTANCE = 420;
 
 export const CELESTIAL_BODIES = [
   { id: "sun", name: "Sun", radius: 696340, distanceFromSun: 0, orbitalPeriod: 0, orbitalInclination: 0, orbitalEccentricity: 0, axialTilt: 7.25, color: "#fdb813", type: "star", initialAngle: 0, summary: "The Sun is the star at the center of our Solar System. It produces the light and heat that make life on Earth possible through nuclear fusion in its core.", history: "People have watched and worshipped the Sun since prehistory. Modern science showed in the 19th and 20th centuries that it is a star powered by fusion rather than fire." },
@@ -92,11 +93,10 @@ export function getBlackHoleScenePosition() {
     return { x: 0, y: 0, z: 0 };
   }
   const angle = blackHole.initialAngle ?? 0;
-  const navigationDistance = 18 * (8 + 15 * Math.log10(blackHole.distanceFromSun));
   return {
-    x: Math.cos(angle) * navigationDistance,
+    x: Math.cos(angle) * BLACK_HOLE_NAVIGATION_DISTANCE,
     y: 0,
-    z: Math.sin(angle) * navigationDistance,
+    z: Math.sin(angle) * BLACK_HOLE_NAVIGATION_DISTANCE,
   };
 }
 
@@ -160,6 +160,17 @@ export const useSimulationStore = create((set, get) => ({
     });
   },
   togglePause: () => set((state) => ({ isPaused: !state.isPaused })),
+  jumpToBlackHole: () => {
+    const blackHole = getBlackHoleScenePosition();
+    set({
+      shipPosition: { x: blackHole.x + 34, y: 7, z: blackHole.z + 34 },
+      shipVelocity: DEFAULT_VELOCITY,
+      velocityFraction: 0,
+      isInWormhole: false,
+      wormholeExitPosition: null,
+      cameraMode: "follow",
+    });
+  },
   returnToSolarSystem: () =>
     set({
       shipPosition: DEFAULT_POSITION,
