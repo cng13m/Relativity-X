@@ -11,7 +11,7 @@ export const SPEED_MODES = {
 
 export const ORBIT_DAYS_PER_SECOND = 8;
 const EARTH_RADIUS_KM = 6371;
-const EARTH_SCENE_RADIUS = 0.72;
+const EARTH_SCENE_RADIUS = 1;
 const DEG_TO_RAD = Math.PI / 180;
 
 export const CELESTIAL_BODIES = [
@@ -36,7 +36,7 @@ export function getScaledDistance(distance) {
   if (distance <= 500) {
     return innerDistance;
   }
-  return innerDistance + Math.pow(distance - 500, 0.38) * 2.7;
+  return innerDistance + Math.pow(distance - 500, 0.38) * 4;
 }
 
 export function getScaledRadius(radius, type) {

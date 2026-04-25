@@ -62,6 +62,7 @@ function PlanetBody({ body }) {
   const bodyRef = useRef(null);
   const meshRef = useRef(null);
   const cloudRef = useRef(null);
+  const activeElapsedRef = useRef(0);
   const radius = getScaledRadius(body.radius, body.type);
   const parentBody = body.parentId ? CELESTIAL_BODIES.find((item) => item.id === body.parentId) : null;
   const parentRadius = parentBody ? getScaledRadius(parentBody.radius, parentBody.type) : 0;
@@ -70,6 +71,7 @@ function PlanetBody({ body }) {
   const detailSegments = body.type === "star" || radius > 2.5 ? 48 : radius > 0.6 ? 40 : 28;
   const textures = useMemo(() => createBodyTextures(), []);
   const planetTextures = textures.planets[body.id];
+  const isPaused = useSimulationStore((state) => state.isPaused);
   const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
 
   const getBodyPosition = (elapsedSeconds = 0) => {
@@ -99,16 +101,20 @@ function PlanetBody({ body }) {
     return points;
   }, [body, orbitDistance, parentBody]);
 
-  useFrame(({ clock }) => {
+  useFrame((state, delta) => {
     if (!bodyRef.current || !meshRef.current) {
       return;
     }
+    if (isPaused) {
+      return;
+    }
+    activeElapsedRef.current += delta;
     if (body.orbitalPeriod === 0) {
       meshRef.current.rotation.y += 0.0014;
       return;
     }
 
-    const position = getBodyPosition(clock.getElapsedTime());
+    const position = getBodyPosition(activeElapsedRef.current);
     bodyRef.current.position.set(position.x, position.y, position.z);
     meshRef.current.rotation.y += body.id === "venus" ? -0.0012 : 0.0028;
     if (cloudRef.current) {
@@ -181,7 +187,9 @@ function PlanetBody({ body }) {
 
 function AsteroidBelt({ innerDistance, outerDistance, count, color, geometry = "dodecahedron" }) {
   const meshRef = useRef(null);
+  const activeElapsedRef = useRef(0);
   const textures = useMemo(() => createBodyTextures(), []);
+  const isPaused = useSimulationStore((state) => state.isPaused);
   const transforms = useMemo(
     () =>
       Array.from({ length: count }, () => ({
@@ -205,12 +213,13 @@ function AsteroidBelt({ innerDistance, outerDistance, count, color, geometry = "
     meshRef.current.instanceMatrix.needsUpdate = true;
   }, [transforms]);
 
-  useFrame(({ clock }) => {
-    if (!meshRef.current) {
+  useFrame((state, delta) => {
+    if (!meshRef.current || isPaused) {
       return;
     }
+    activeElapsedRef.current += delta;
     const matrix = new THREE.Matrix4();
-    const time = clock.getElapsedTime() * (outerDistance > 400 ? 0.005 : 0.02);
+    const time = activeElapsedRef.current * (outerDistance > 400 ? 0.005 : 0.02);
     transforms.forEach((item, index) => {
       const angle = item.angle + time;
       matrix.compose(new THREE.Vector3(Math.cos(angle) * item.radius, item.y, Math.sin(angle) * item.radius), new THREE.Quaternion(), new THREE.Vector3(item.scale, item.scale, item.scale));
@@ -239,7 +248,8 @@ function WormholeEffect() {
   const eventHorizonRef = useRef(null);
   const pulseRef = useRef(null);
   const timeoutRef = useRef(null);
-  const { triggerWormhole, completeWormhole, isInWormhole, shipPosition, setSelectedBody } = useSimulationStore();
+  const activeElapsedRef = useRef(0);
+  const { triggerWormhole, completeWormhole, isInWormhole, isPaused, shipPosition, setSelectedBody } = useSimulationStore();
   const blackHoleBody = CELESTIAL_BODIES.find((body) => body.id === "blackhole");
   const target = getBlackHoleScenePosition();
 
@@ -251,8 +261,12 @@ function WormholeEffect() {
     };
   }, []);
 
-  useFrame(({ clock }) => {
-    const elapsed = clock.getElapsedTime();
+  useFrame((state, delta) => {
+    if (isPaused) {
+      return;
+    }
+    activeElapsedRef.current += delta;
+    const elapsed = activeElapsedRef.current;
     if (eventHorizonRef.current) {
       eventHorizonRef.current.rotation.z = elapsed * 0.1;
     }
@@ -306,6 +320,8 @@ function WormholeEffect() {
 
 function Ship() {
   const shipRef = useRef(null);
+  const flameRef = useRef(null);
+  const flameGlowRef = useRef(null);
   const rotationRef = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
   const maneuverLeanRef = useRef({ pitch: 0, roll: 0 });
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
@@ -417,6 +433,14 @@ function Ship() {
     else throttleRef.current = Math.abs(throttleRef.current *= 0.995) < 0.0001 ? 0 : throttleRef.current;
 
     throttleRef.current = Math.max(-(mode.maxVelocity * 0.5), Math.min(throttleRef.current, mode.maxVelocity));
+    const thrustVisibility = Math.min(1, 0.35 + Math.abs(throttleRef.current) / Math.max(mode.maxVelocity, 0.001));
+    if (flameRef.current && flameGlowRef.current) {
+      const forwardThrust = Math.max(0.2, thrustVisibility);
+      flameRef.current.scale.set(1, 1, 0.75 + forwardThrust * 1.8);
+      flameRef.current.material.opacity = 0.45 + forwardThrust * 0.35;
+      flameGlowRef.current.scale.setScalar(0.9 + forwardThrust * 0.9);
+      flameGlowRef.current.material.opacity = 0.18 + forwardThrust * 0.28;
+    }
     velocityRef.current.copy(forward).multiplyScalar(throttleRef.current * 1000 * delta);
     const verticalStep = mode.maxVelocity * 1000 * 0.3 * delta;
     if (keys.up) velocityRef.current.addScaledVector(up, verticalStep);
@@ -455,7 +479,15 @@ function Ship() {
       <mesh position={[-0.65, -0.12, 0]} rotation={[0.08, 0, -Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
       <mesh position={[0, 0.33, 0.45]} rotation={[0.12, 0, 0]}><boxGeometry args={[0.08, 0.36, 0.35]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.72} roughness={0.24} /></mesh>
       <mesh position={[0, 0, 1.26]}><sphereGeometry args={[0.14, 20, 20]} /><meshBasicMaterial color="#2de2ff" /></mesh>
-      <mesh position={[0, 0, 1.42]} rotation={[Math.PI / 2, 0, 0]}><coneGeometry args={[0.08, 0.44, 18]} /><meshBasicMaterial color="#8cf4ff" transparent opacity={0.7} /></mesh>
+      <mesh ref={flameRef} position={[0, 0, 1.72]} rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.16, 1.2, 24, 1, true]} />
+        <meshBasicMaterial color="#48ddff" transparent opacity={0.72} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <mesh ref={flameGlowRef} position={[0, 0, 1.95]}>
+        <sphereGeometry args={[0.34, 20, 20]} />
+        <meshBasicMaterial color="#0bcfff" transparent opacity={0.32} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      <pointLight position={[0, 0, 1.6]} color="#06d2ff" intensity={2.2} distance={18} />
       <pointLight position={[0, 0, 1.15]} color="#06d2ff" intensity={1.4} distance={9} />
     </group>
   );
@@ -474,10 +506,11 @@ function SolarSystem() {
 
 function Scene() {
   const cameraMode = useSimulationStore((state) => state.cameraMode);
+  const isPaused = useSimulationStore((state) => state.isPaused);
   return (
     <>
       <SceneBackground />
-      <Stars radius={300} depth={100} count={4500} factor={5} saturation={0} fade speed={0.25} />
+      <Stars radius={300} depth={100} count={4500} factor={5} saturation={0} fade speed={isPaused ? 0 : 0.25} />
       <ambientLight intensity={0.1} />
       <directionalLight position={[10, 10, 10]} intensity={0.5} />
       <SolarSystem />
@@ -634,6 +667,17 @@ function ControlHud() {
   );
 }
 
+function StopStartButton() {
+  const isPaused = useSimulationStore((state) => state.isPaused);
+  const togglePause = useSimulationStore((state) => state.togglePause);
+
+  return (
+    <button type="button" className={isPaused ? "stop-start-button start" : "stop-start-button stop"} onClick={togglePause}>
+      {isPaused ? "Start" : "Stop"}
+    </button>
+  );
+}
+
 function InfoHud() {
   const selectedBody = useSimulationStore((state) => state.selectedBody);
   const setSelectedBody = useSimulationStore((state) => state.setSelectedBody);
@@ -690,6 +734,7 @@ export default function App() {
       <MainScene />
       <div className="hud-layer">
         <div className="hud-top-left"><SpeedHud /></div>
+        <div className="hud-top-center"><StopStartButton /></div>
         <div className="hud-left-stack"><InfoHud /></div>
         <div className="hud-top-right"><TimeHud /></div>
         <div className="hud-mid-right"><MiniMap /></div>

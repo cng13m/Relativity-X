@@ -55,6 +55,7 @@ button {
 }
 
 .hud-top-left,
+.hud-top-center,
 .hud-top-right,
 .hud-mid-right,
 .hud-bottom-left,
@@ -74,6 +75,7 @@ button {
 }
 
 .hud-top-left { top: 1rem; left: 1rem; }
+.hud-top-center { top: 1rem; left: 50%; transform: translateX(-50%); }
 .hud-top-right { top: 1rem; right: 1rem; }
 .hud-mid-right { top: 50%; right: 1rem; transform: translateY(-50%); }
 .hud-bottom-left { left: 1rem; bottom: 1rem; }
@@ -197,6 +199,34 @@ button {
 .reset-button { width: auto; padding: 0.45rem 0.75rem; }
 .pause-button { background: #b76b00; color: white; }
 .reset-button { background: rgba(212, 9, 36, 0.85); color: white; }
+
+.stop-start-button {
+  min-width: 6.5rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.45rem;
+  background: rgba(180, 22, 45, 0.88);
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.45),
+    0 0 24px rgba(180, 22, 45, 0.22);
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stop-start-button.start {
+  background: rgba(0, 158, 92, 0.9);
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.45),
+    0 0 24px rgba(0, 158, 92, 0.2);
+}
+
+.stop-start-button:hover {
+  transform: translateY(-1px);
+}
 
 .solar-map {
   position: relative;
@@ -353,6 +383,7 @@ button {
   }
 
   .hud-top-left,
+  .hud-top-center,
   .hud-top-right,
   .hud-left-stack,
   .hud-mid-right,
