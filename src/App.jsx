@@ -320,8 +320,8 @@ function WormholeEffect() {
 
 function Ship() {
   const shipRef = useRef(null);
-  const flameRef = useRef(null);
-  const flameGlowRef = useRef(null);
+  const beaconRef = useRef(null);
+  const beaconLightRef = useRef(null);
   const rotationRef = useRef(new THREE.Euler(0, 0, 0, "YXZ"));
   const maneuverLeanRef = useRef({ pitch: 0, roll: 0 });
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
@@ -405,6 +405,12 @@ function Ship() {
       shipRef.current.rotation.z += delta * 10;
       return;
     }
+    const beaconPulse = 0.25 + Math.max(0, Math.sin(state.clock.getElapsedTime() * 5.8)) * 0.75;
+    if (beaconRef.current && beaconLightRef.current) {
+      beaconRef.current.material.opacity = 0.35 + beaconPulse * 0.65;
+      beaconRef.current.scale.setScalar(0.85 + beaconPulse * 0.5);
+      beaconLightRef.current.intensity = 0.25 + beaconPulse * 2.2;
+    }
     if (isPaused) {
       camera.lookAt(positionRef.current);
       return;
@@ -421,7 +427,7 @@ function Ship() {
     if (keys.rollRight) rotationRef.current.z -= turnStep;
 
     const targetRoll = (keys.left ? 0.42 : 0) + (keys.right ? -0.42 : 0);
-    const targetPitch = (keys.up ? -0.2 : 0) + (keys.down ? 0.2 : 0);
+    const targetPitch = (keys.up ? 0.2 : 0) + (keys.down ? -0.2 : 0);
     maneuverLeanRef.current.roll = THREE.MathUtils.lerp(maneuverLeanRef.current.roll, targetRoll, 0.08);
     maneuverLeanRef.current.pitch = THREE.MathUtils.lerp(maneuverLeanRef.current.pitch, targetPitch, 0.08);
 
@@ -433,14 +439,6 @@ function Ship() {
     else throttleRef.current = Math.abs(throttleRef.current *= 0.995) < 0.0001 ? 0 : throttleRef.current;
 
     throttleRef.current = Math.max(-(mode.maxVelocity * 0.5), Math.min(throttleRef.current, mode.maxVelocity));
-    const thrustVisibility = Math.min(1, 0.35 + Math.abs(throttleRef.current) / Math.max(mode.maxVelocity, 0.001));
-    if (flameRef.current && flameGlowRef.current) {
-      const forwardThrust = Math.max(0.2, thrustVisibility);
-      flameRef.current.scale.set(1, 1, 0.75 + forwardThrust * 1.8);
-      flameRef.current.material.opacity = 0.45 + forwardThrust * 0.35;
-      flameGlowRef.current.scale.setScalar(0.9 + forwardThrust * 0.9);
-      flameGlowRef.current.material.opacity = 0.18 + forwardThrust * 0.28;
-    }
     velocityRef.current.copy(forward).multiplyScalar(throttleRef.current * 1000 * delta);
     const verticalStep = mode.maxVelocity * 1000 * 0.3 * delta;
     if (keys.up) velocityRef.current.addScaledVector(up, verticalStep);
@@ -478,16 +476,12 @@ function Ship() {
       <mesh position={[0.65, -0.12, 0]} rotation={[0.08, 0, Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
       <mesh position={[-0.65, -0.12, 0]} rotation={[0.08, 0, -Math.PI / 8]}><boxGeometry args={[1.05, 0.05, 0.56]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.78} roughness={0.22} /></mesh>
       <mesh position={[0, 0.33, 0.45]} rotation={[0.12, 0, 0]}><boxGeometry args={[0.08, 0.36, 0.35]} /><meshStandardMaterial map={shipMaterial.map} bumpMap={shipMaterial.bumpMap} bumpScale={0.02} roughnessMap={shipMaterial.roughnessMap} color="#9ba9bc" metalness={0.72} roughness={0.24} /></mesh>
+      <mesh ref={beaconRef} position={[0, 0.4, 0.03]}>
+        <sphereGeometry args={[0.09, 16, 16]} />
+        <meshBasicMaterial color="#ff203c" transparent opacity={0.85} />
+      </mesh>
+      <pointLight ref={beaconLightRef} position={[0, 0.48, 0.03]} color="#ff203c" intensity={1.2} distance={7} />
       <mesh position={[0, 0, 1.26]}><sphereGeometry args={[0.14, 20, 20]} /><meshBasicMaterial color="#2de2ff" /></mesh>
-      <mesh ref={flameRef} position={[0, 0, 1.72]} rotation={[-Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.16, 1.2, 24, 1, true]} />
-        <meshBasicMaterial color="#48ddff" transparent opacity={0.72} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <mesh ref={flameGlowRef} position={[0, 0, 1.95]}>
-        <sphereGeometry args={[0.34, 20, 20]} />
-        <meshBasicMaterial color="#0bcfff" transparent opacity={0.32} blending={THREE.AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <pointLight position={[0, 0, 1.6]} color="#06d2ff" intensity={2.2} distance={18} />
       <pointLight position={[0, 0, 1.15]} color="#06d2ff" intensity={1.4} distance={9} />
     </group>
   );

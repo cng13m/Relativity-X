@@ -92,11 +92,11 @@ export function getBlackHoleScenePosition() {
     return { x: 0, y: 0, z: 0 };
   }
   const angle = blackHole.initialAngle ?? 0;
-  const distance = 18 * getScaledDistance(blackHole.distanceFromSun);
+  const navigationDistance = 18 * (8 + 15 * Math.log10(blackHole.distanceFromSun));
   return {
-    x: Math.cos(angle) * distance,
+    x: Math.cos(angle) * navigationDistance,
     y: 0,
-    z: Math.sin(angle) * distance,
+    z: Math.sin(angle) * navigationDistance,
   };
 }
 
