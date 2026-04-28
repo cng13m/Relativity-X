@@ -328,6 +328,7 @@ function AsteroidBelt({ innerDistance, outerDistance, count, color, geometry = "
 function WormholeEffect() {
   const eventHorizonRef = useRef(null);
   const pulseRef = useRef(null);
+  const labelRef = useRef(null);
   const redirectingRef = useRef(false);
   const activeElapsedRef = useRef(0);
   const { isPaused, shipPosition, setSelectedBody } = useSimulationStore();
@@ -348,6 +349,9 @@ function WormholeEffect() {
     }
     const ship = new THREE.Vector3(shipPosition.x, shipPosition.y, shipPosition.z);
     const blackHole = new THREE.Vector3(target.x, target.y, target.z);
+    if (labelRef.current) {
+      labelRef.current.lookAt(ship.x, target.y + 35, ship.z);
+    }
     if (ship.distanceTo(blackHole) < BLACK_HOLE_PORTAL_RADIUS && !redirectingRef.current) {
       const destination = appendPortalParams(VIBE_JAM_PORTAL_URL, useSimulationStore.getState());
       if (!destination) {
@@ -385,12 +389,14 @@ function WormholeEffect() {
         <sphereGeometry args={[46, 36, 36]} />
         <meshBasicMaterial color="#060611" transparent opacity={0.36} side={THREE.BackSide} />
       </mesh>
-      <Text position={[0, 35, 0]} fontSize={5.2} color="#fff2d5" anchorX="center" anchorY="middle" outlineWidth={0.14} outlineColor="#1f0700">
-        Vibe Jam Portal
-      </Text>
-      <Text position={[0, 28.5, 0]} fontSize={2.3} color="#9cecff" anchorX="center" anchorY="middle" outlineWidth={0.08} outlineColor="#001016">
-        Fly into the black hole
-      </Text>
+      <group ref={labelRef} position={[0, 35, 0]}>
+        <Text fontSize={5.2} color="#fff2d5" anchorX="center" anchorY="middle" outlineWidth={0.14} outlineColor="#1f0700">
+          Vibe Jam Portal
+        </Text>
+        <Text position={[0, -6.5, 0]} fontSize={2.3} color="#9cecff" anchorX="center" anchorY="middle" outlineWidth={0.08} outlineColor="#001016">
+          Fly into the black hole
+        </Text>
+      </group>
       <pointLight color="#ff6600" intensity={6} distance={150} decay={2} />
       <pointLight color="#00ffff" intensity={3.2} distance={110} decay={2} position={[0, 16, 0]} />
       <pointLight color="#00ffff" intensity={3.2} distance={110} decay={2} position={[0, -16, 0]} />
