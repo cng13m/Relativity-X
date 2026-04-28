@@ -298,6 +298,15 @@ button {
   border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
+.map-tag-vibe {
+  padding: 0.07rem 0.2rem;
+  color: #fff2d5;
+  background: rgba(84, 28, 5, 0.64);
+  border: 1px solid rgba(255, 184, 77, 0.34);
+  font-size: 0.46rem;
+  transform: translate(-0.55rem, 0.42rem);
+}
+
 .map-tag-ship {
   color: #c8fbff;
   background: rgba(3, 46, 54, 0.72);

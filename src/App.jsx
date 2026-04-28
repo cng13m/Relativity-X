@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Line, OrbitControls, Stars } from "@react-three/drei";
+import { Line, OrbitControls, Stars, Text } from "@react-three/drei";
 import * as THREE from "three";
 import {
   CELESTIAL_BODIES,
@@ -14,12 +14,93 @@ import {
 } from "./simulation";
 import { createBodyTextures } from "./textures";
 
+const VIBE_JAM_PORTAL_URL = "https://vibejam.cc/portal/2026";
+const LIGHT_SPEED_METERS_PER_SECOND = 299792458;
+const RETURN_PORTAL_POSITION = [-18, 7, 64];
+const ARRIVAL_SPAWN_POSITION = [-18, 7, 48];
+const PORTAL_TRIGGER_RADIUS = 6.5;
+const BLACK_HOLE_PORTAL_RADIUS = 18;
+const PORTAL_QUERY_KEYS = [
+  "username",
+  "color",
+  "speed",
+  "avatar_url",
+  "team",
+  "hp",
+  "speed_x",
+  "speed_y",
+  "speed_z",
+  "rotation_x",
+  "rotation_y",
+  "rotation_z",
+];
+
 function formatClock(seconds) {
   const total = Math.max(0, Math.floor(seconds));
   const hours = String(Math.floor(total / 3600)).padStart(2, "0");
   const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
   const secs = String(total % 60).padStart(2, "0");
   return `${hours}:${minutes}:${secs}`;
+}
+
+function getIncomingPortalParams() {
+  if (typeof window === "undefined") {
+    return { cameFromPortal: false, ref: "" };
+  }
+  const params = new URLSearchParams(window.location.search);
+  return {
+    cameFromPortal: params.get("portal") === "true",
+    ref: params.get("ref") ?? "",
+  };
+}
+
+function getCurrentGameRef() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function normalizePortalTarget(target) {
+  if (!target) {
+    return "";
+  }
+  if (/^https?:\/\//i.test(target)) {
+    return target;
+  }
+  return `https://${target}`;
+}
+
+function appendPortalParams(target, state, { includePortalFlag = false } = {}) {
+  const normalizedTarget = normalizePortalTarget(target);
+  if (!normalizedTarget || typeof window === "undefined") {
+    return normalizedTarget;
+  }
+
+  const url = new URL(normalizedTarget);
+  const incomingParams = new URLSearchParams(window.location.search);
+  PORTAL_QUERY_KEYS.forEach((key) => {
+    const value = incomingParams.get(key);
+    if (value !== null) {
+      url.searchParams.set(key, value);
+    }
+  });
+
+  const velocity = state.shipVelocity ?? { x: 0, y: 0, z: 0 };
+  const speed = Math.abs(state.velocityFraction ?? 0) * LIGHT_SPEED_METERS_PER_SECOND;
+  url.searchParams.set("speed", speed.toFixed(2));
+  url.searchParams.set("speed_x", velocity.x.toFixed(4));
+  url.searchParams.set("speed_y", velocity.y.toFixed(4));
+  url.searchParams.set("speed_z", velocity.z.toFixed(4));
+  url.searchParams.set("color", incomingParams.get("color") ?? "#53eafd");
+  url.searchParams.set("username", incomingParams.get("username") ?? "RelativityX Pilot");
+  url.searchParams.set("ref", getCurrentGameRef());
+
+  if (includePortalFlag) {
+    url.searchParams.set("portal", "true");
+  }
+
+  return url.toString();
 }
 
 function HudPanel({ className = "", children }) {
@@ -247,19 +328,11 @@ function AsteroidBelt({ innerDistance, outerDistance, count, color, geometry = "
 function WormholeEffect() {
   const eventHorizonRef = useRef(null);
   const pulseRef = useRef(null);
-  const timeoutRef = useRef(null);
+  const redirectingRef = useRef(false);
   const activeElapsedRef = useRef(0);
-  const { triggerWormhole, completeWormhole, isInWormhole, isPaused, shipPosition, setSelectedBody } = useSimulationStore();
+  const { isPaused, shipPosition, setSelectedBody } = useSimulationStore();
   const blackHoleBody = CELESTIAL_BODIES.find((body) => body.id === "blackhole");
   const target = getBlackHoleScenePosition();
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 
   useFrame((state, delta) => {
     if (isPaused) {
@@ -275,12 +348,13 @@ function WormholeEffect() {
     }
     const ship = new THREE.Vector3(shipPosition.x, shipPosition.y, shipPosition.z);
     const blackHole = new THREE.Vector3(target.x, target.y, target.z);
-    if (ship.distanceTo(blackHole) < 18 && !isInWormhole && !timeoutRef.current) {
-      triggerWormhole();
-      timeoutRef.current = window.setTimeout(() => {
-        completeWormhole();
-        timeoutRef.current = null;
-      }, 1500);
+    if (ship.distanceTo(blackHole) < BLACK_HOLE_PORTAL_RADIUS && !redirectingRef.current) {
+      const destination = appendPortalParams(VIBE_JAM_PORTAL_URL, useSimulationStore.getState());
+      if (!destination) {
+        return;
+      }
+      redirectingRef.current = true;
+      window.location.assign(destination);
     }
   });
 
@@ -311,10 +385,121 @@ function WormholeEffect() {
         <sphereGeometry args={[46, 36, 36]} />
         <meshBasicMaterial color="#060611" transparent opacity={0.36} side={THREE.BackSide} />
       </mesh>
+      <Text position={[0, 35, 0]} fontSize={5.2} color="#fff2d5" anchorX="center" anchorY="middle" outlineWidth={0.14} outlineColor="#1f0700">
+        Vibe Jam Portal
+      </Text>
+      <Text position={[0, 28.5, 0]} fontSize={2.3} color="#9cecff" anchorX="center" anchorY="middle" outlineWidth={0.08} outlineColor="#001016">
+        Fly into the black hole
+      </Text>
       <pointLight color="#ff6600" intensity={6} distance={150} decay={2} />
       <pointLight color="#00ffff" intensity={3.2} distance={110} decay={2} position={[0, 16, 0]} />
       <pointLight color="#00ffff" intensity={3.2} distance={110} decay={2} position={[0, -16, 0]} />
     </group>
+  );
+}
+
+function PortalArrival() {
+  const setShipPosition = useSimulationStore((state) => state.setShipPosition);
+  const setShipVelocity = useSimulationStore((state) => state.setShipVelocity);
+  const setVelocityFraction = useSimulationStore((state) => state.setVelocityFraction);
+  const setCameraMode = useSimulationStore((state) => state.setCameraMode);
+
+  useEffect(() => {
+    const { cameFromPortal } = getIncomingPortalParams();
+    if (!cameFromPortal) {
+      return;
+    }
+    setShipPosition({ x: ARRIVAL_SPAWN_POSITION[0], y: ARRIVAL_SPAWN_POSITION[1], z: ARRIVAL_SPAWN_POSITION[2] });
+    setShipVelocity({ x: 0, y: 0, z: 0 });
+    setVelocityFraction(0);
+    setCameraMode("follow");
+  }, [setCameraMode, setShipPosition, setShipVelocity, setVelocityFraction]);
+
+  return null;
+}
+
+function VibePortal({ position, label, target, isReturn = false, color = "#53eafd", glow = "#8b5cf6" }) {
+  const ringRef = useRef(null);
+  const innerRef = useRef(null);
+  const particlesRef = useRef(null);
+  const redirectingRef = useRef(false);
+  const shipPosition = useSimulationStore((state) => state.shipPosition);
+
+  useFrame((state, delta) => {
+    if (ringRef.current) {
+      ringRef.current.rotation.z += delta * 0.65;
+    }
+    if (innerRef.current) {
+      const pulse = 1 + Math.sin(state.clock.elapsedTime * 3.2) * 0.08;
+      innerRef.current.scale.set(pulse, pulse, pulse);
+      innerRef.current.material.opacity = 0.22 + Math.sin(state.clock.elapsedTime * 4.1) * 0.08;
+    }
+    if (particlesRef.current) {
+      particlesRef.current.rotation.z -= delta * 0.24;
+    }
+
+    if (redirectingRef.current) {
+      return;
+    }
+
+    const portalPosition = new THREE.Vector3(position[0], position[1], position[2]);
+    const ship = new THREE.Vector3(shipPosition.x, shipPosition.y, shipPosition.z);
+    if (ship.distanceTo(portalPosition) > PORTAL_TRIGGER_RADIUS) {
+      return;
+    }
+
+    const stateSnapshot = useSimulationStore.getState();
+    const destination = appendPortalParams(target, stateSnapshot, { includePortalFlag: isReturn });
+    if (!destination) {
+      return;
+    }
+    redirectingRef.current = true;
+    window.location.assign(destination);
+  });
+
+  return (
+    <group position={position}>
+      <mesh ref={ringRef}>
+        <torusGeometry args={[3.2, 0.18, 24, 128]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.4} roughness={0.18} metalness={0.35} />
+      </mesh>
+      <mesh ref={particlesRef}>
+        <torusGeometry args={[3.95, 0.035, 12, 96]} />
+        <meshBasicMaterial color={glow} transparent opacity={0.8} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh ref={innerRef}>
+        <circleGeometry args={[2.85, 96]} />
+        <meshBasicMaterial color={glow} transparent opacity={0.24} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <pointLight color={color} intensity={2.7} distance={34} decay={2} />
+      <pointLight color={glow} intensity={1.8} distance={26} decay={2} position={[0, 0, 2]} />
+      <Text position={[0, 4.35, 0]} fontSize={0.62} color="#e9fbff" anchorX="center" anchorY="middle" outlineWidth={0.018} outlineColor="#001a22">
+        {label}
+      </Text>
+      <Text position={[0, -4.25, 0]} fontSize={0.32} color="#9cecff" anchorX="center" anchorY="middle" outlineWidth={0.012} outlineColor="#001016">
+        Fly through
+      </Text>
+    </group>
+  );
+}
+
+function VibeJamPortals() {
+  const { cameFromPortal, ref } = useMemo(() => getIncomingPortalParams(), []);
+
+  return (
+    <>
+      <PortalArrival />
+      {cameFromPortal && ref ? (
+        <VibePortal
+          position={RETURN_PORTAL_POSITION}
+          label="Return Portal"
+          target={ref}
+          isReturn
+          color="#ffb84d"
+          glow="#ff3d71"
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -509,6 +694,7 @@ function Scene() {
       <directionalLight position={[10, 10, 10]} intensity={0.5} />
       <SolarSystem />
       <WormholeEffect />
+      <VibeJamPortals />
       <Ship />
       {cameraMode === "free" ? <OrbitControls enableDamping dampingFactor={0.05} maxDistance={3500} /> : null}
     </>
@@ -603,13 +789,14 @@ function MiniMap() {
         <div className="map-dot black-hole-dot" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }} />
         <div className="map-dot ship-dot" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }} />
         <div className="map-tag map-tag-black-hole" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }}>BH</div>
+        <div className="map-tag map-tag-vibe" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }}>PORTAL</div>
         <div className="map-tag map-tag-ship" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }}>YOU</div>
       </div>
       <div className="map-stats">
         <div className="metric-row"><span>XZ Distance</span><span className="metric-cyan">{xzDistance.toFixed(1)}</span></div>
         <div className="metric-row"><span>Black Hole Range</span><span className="metric-amber">{blackHoleDistance.toFixed(1)}</span></div>
       </div>
-      <p className="map-caption">Follow the cyan route from your ship toward the red black-hole marker.</p>
+      <p className="map-caption">Follow the cyan route to the black-hole portal marker.</p>
       <button type="button" className="secondary-button black-hole-button" onClick={jumpToBlackHole}>Jump to Black Hole</button>
       <button type="button" className="secondary-button" onClick={returnToSolarSystem}>Snap Back to Solar System</button>
     </HudPanel>
