@@ -16,8 +16,8 @@ import { createBodyTextures } from "./textures";
 
 const VIBE_JAM_PORTAL_URL = "https://vibejam.cc/portal/2026";
 const LIGHT_SPEED_METERS_PER_SECOND = 299792458;
-const RETURN_PORTAL_POSITION = [-18, 7, 25];
-const ARRIVAL_SPAWN_POSITION = [-18, 7, 48];
+const RETURN_PORTAL_POSITION = [890, 7, 890];
+const ARRIVAL_SPAWN_POSITION = [858, 7, 858];
 const PORTAL_TRIGGER_RADIUS = 6.5;
 const BLACK_HOLE_PORTAL_RADIUS = 18;
 const PORTAL_QUERY_KEYS = [
@@ -763,6 +763,8 @@ function MiniMap() {
     Math.abs(shipPosition.z),
     Math.abs(blackHole.x),
     Math.abs(blackHole.z),
+    Math.abs(RETURN_PORTAL_POSITION[0]),
+    Math.abs(RETURN_PORTAL_POSITION[2]),
   ) * 1.15;
   const toPercent = (value) => 50 + (value / maxExtent) * 46;
   const shipLeft = toPercent(shipPosition.x);
