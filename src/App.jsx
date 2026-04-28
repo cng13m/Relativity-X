@@ -16,7 +16,7 @@ import { createBodyTextures } from "./textures";
 
 const VIBE_JAM_PORTAL_URL = "https://vibejam.cc/portal/2026";
 const LIGHT_SPEED_METERS_PER_SECOND = 299792458;
-const RETURN_PORTAL_POSITION = [-18, 7, 64];
+const RETURN_PORTAL_POSITION = [-18, 7, 25];
 const ARRIVAL_SPAWN_POSITION = [-18, 7, 48];
 const PORTAL_TRIGGER_RADIUS = 6.5;
 const BLACK_HOLE_PORTAL_RADIUS = 18;
@@ -424,38 +424,41 @@ function PortalArrival() {
   return null;
 }
 
-function VibePortal({ position, label, target, isReturn = false, color = "#53eafd", glow = "#8b5cf6" }) {
-  const ringRef = useRef(null);
-  const innerRef = useRef(null);
-  const particlesRef = useRef(null);
+function ReturnBlackHolePortal({ target }) {
+  const horizonRef = useRef(null);
+  const outerRingRef = useRef(null);
+  const pulseRef = useRef(null);
+  const labelRef = useRef(null);
   const redirectingRef = useRef(false);
   const shipPosition = useSimulationStore((state) => state.shipPosition);
 
   useFrame((state, delta) => {
-    if (ringRef.current) {
-      ringRef.current.rotation.z += delta * 0.65;
+    if (horizonRef.current) {
+      horizonRef.current.rotation.z += delta * 0.85;
     }
-    if (innerRef.current) {
-      const pulse = 1 + Math.sin(state.clock.elapsedTime * 3.2) * 0.08;
-      innerRef.current.scale.set(pulse, pulse, pulse);
-      innerRef.current.material.opacity = 0.22 + Math.sin(state.clock.elapsedTime * 4.1) * 0.08;
+    if (outerRingRef.current) {
+      outerRingRef.current.rotation.z -= delta * 0.28;
     }
-    if (particlesRef.current) {
-      particlesRef.current.rotation.z -= delta * 0.24;
+    if (pulseRef.current) {
+      pulseRef.current.scale.setScalar(0.9 + Math.sin(state.clock.elapsedTime * 2.8) * 0.12);
+    }
+
+    const ship = new THREE.Vector3(shipPosition.x, shipPosition.y, shipPosition.z);
+    if (labelRef.current) {
+      labelRef.current.lookAt(ship.x, RETURN_PORTAL_POSITION[1] + 12, ship.z);
     }
 
     if (redirectingRef.current) {
       return;
     }
 
-    const portalPosition = new THREE.Vector3(position[0], position[1], position[2]);
-    const ship = new THREE.Vector3(shipPosition.x, shipPosition.y, shipPosition.z);
+    const portalPosition = new THREE.Vector3(RETURN_PORTAL_POSITION[0], RETURN_PORTAL_POSITION[1], RETURN_PORTAL_POSITION[2]);
     if (ship.distanceTo(portalPosition) > PORTAL_TRIGGER_RADIUS) {
       return;
     }
 
     const stateSnapshot = useSimulationStore.getState();
-    const destination = appendPortalParams(target, stateSnapshot, { includePortalFlag: isReturn });
+    const destination = appendPortalParams(target, stateSnapshot, { includePortalFlag: true });
     if (!destination) {
       return;
     }
@@ -464,27 +467,37 @@ function VibePortal({ position, label, target, isReturn = false, color = "#53eaf
   });
 
   return (
-    <group position={position}>
-      <mesh ref={ringRef}>
-        <torusGeometry args={[3.2, 0.18, 24, 128]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.4} roughness={0.18} metalness={0.35} />
+    <group position={RETURN_PORTAL_POSITION}>
+      <mesh>
+        <sphereGeometry args={[2.15, 64, 64]} />
+        <meshBasicMaterial color="#000000" />
       </mesh>
-      <mesh ref={particlesRef}>
-        <torusGeometry args={[3.95, 0.035, 12, 96]} />
-        <meshBasicMaterial color={glow} transparent opacity={0.8} blending={THREE.AdditiveBlending} />
+      <mesh ref={horizonRef} rotation={[Math.PI / 2.28, -0.18, 0]}>
+        <ringGeometry args={[2.8, 7.1, 128]} />
+        <meshStandardMaterial color="#ffffff" emissive="#22d3ee" emissiveIntensity={2.9} transparent opacity={0.88} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
       </mesh>
-      <mesh ref={innerRef}>
-        <circleGeometry args={[2.85, 96]} />
-        <meshBasicMaterial color={glow} transparent opacity={0.24} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      <mesh ref={outerRingRef} rotation={[Math.PI / 2.28, -0.18, 0]}>
+        <ringGeometry args={[7.3, 12.4, 128]} />
+        <meshStandardMaterial color="#ffffff" emissive="#3b82f6" emissiveIntensity={1.45} transparent opacity={0.42} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
       </mesh>
-      <pointLight color={color} intensity={2.7} distance={34} decay={2} />
-      <pointLight color={glow} intensity={1.8} distance={26} decay={2} position={[0, 0, 2]} />
-      <Text position={[0, 4.35, 0]} fontSize={0.62} color="#e9fbff" anchorX="center" anchorY="middle" outlineWidth={0.018} outlineColor="#001a22">
-        {label}
-      </Text>
-      <Text position={[0, -4.25, 0]} fontSize={0.32} color="#9cecff" anchorX="center" anchorY="middle" outlineWidth={0.012} outlineColor="#001016">
-        Fly through
-      </Text>
+      <mesh ref={pulseRef}>
+        <sphereGeometry args={[2.8, 40, 40]} />
+        <meshBasicMaterial color="#38bdf8" transparent opacity={0.22} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[18, 32, 32]} />
+        <meshBasicMaterial color="#02131f" transparent opacity={0.32} side={THREE.BackSide} />
+      </mesh>
+      <group ref={labelRef} position={[0, 12, 0]}>
+        <Text fontSize={1.55} color="#dffbff" anchorX="center" anchorY="middle" outlineWidth={0.04} outlineColor="#00121a">
+          Return Portal
+        </Text>
+        <Text position={[0, -2.1, 0]} fontSize={0.72} color="#8defff" anchorX="center" anchorY="middle" outlineWidth={0.025} outlineColor="#001016">
+          Fly back
+        </Text>
+      </group>
+      <pointLight color="#22d3ee" intensity={3.4} distance={58} decay={2} />
+      <pointLight color="#3b82f6" intensity={1.8} distance={44} decay={2} position={[0, 7, 0]} />
     </group>
   );
 }
@@ -496,14 +509,7 @@ function VibeJamPortals() {
     <>
       <PortalArrival />
       {cameFromPortal && ref ? (
-        <VibePortal
-          position={RETURN_PORTAL_POSITION}
-          label="Return Portal"
-          target={ref}
-          isReturn
-          color="#ffb84d"
-          glow="#ff3d71"
-        />
+        <ReturnBlackHolePortal target={ref} />
       ) : null}
     </>
   );
@@ -749,6 +755,7 @@ function MiniMap() {
   const shipPosition = useSimulationStore((state) => state.shipPosition);
   const returnToSolarSystem = useSimulationStore((state) => state.returnToSolarSystem);
   const jumpToBlackHole = useSimulationStore((state) => state.jumpToBlackHole);
+  const { cameFromPortal, ref } = useMemo(() => getIncomingPortalParams(), []);
   const blackHole = getBlackHoleScenePosition();
   const maxExtent = Math.max(
     60,
@@ -762,8 +769,11 @@ function MiniMap() {
   const shipTop = toPercent(shipPosition.z);
   const blackHoleLeft = toPercent(blackHole.x);
   const blackHoleTop = toPercent(blackHole.z);
+  const returnPortalLeft = toPercent(RETURN_PORTAL_POSITION[0]);
+  const returnPortalTop = toPercent(RETURN_PORTAL_POSITION[2]);
   const xzDistance = Math.sqrt(shipPosition.x ** 2 + shipPosition.z ** 2);
   const blackHoleDistance = Math.sqrt((blackHole.x - shipPosition.x) ** 2 + (blackHole.z - shipPosition.z) ** 2);
+  const showReturnPortal = cameFromPortal && ref;
   return (
     <HudPanel className="map-panel">
       <div className="panel-heading">
@@ -793,9 +803,11 @@ function MiniMap() {
         />
         <div className="map-dot sun-dot" style={{ left: "50%", top: "47.4737%" }} />
         <div className="map-dot black-hole-dot" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }} />
+        {showReturnPortal ? <div className="map-dot return-portal-dot" style={{ left: `${returnPortalLeft}%`, top: `${returnPortalTop}%` }} /> : null}
         <div className="map-dot ship-dot" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }} />
         <div className="map-tag map-tag-black-hole" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }}>BH</div>
         <div className="map-tag map-tag-vibe" style={{ left: `${blackHoleLeft}%`, top: `${blackHoleTop}%` }}>PORTAL</div>
+        {showReturnPortal ? <div className="map-tag map-tag-return" style={{ left: `${returnPortalLeft}%`, top: `${returnPortalTop}%` }}>RETURN</div> : null}
         <div className="map-tag map-tag-ship" style={{ left: `${shipLeft}%`, top: `${shipTop}%` }}>YOU</div>
       </div>
       <div className="map-stats">

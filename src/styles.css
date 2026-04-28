@@ -307,6 +307,15 @@ button {
   transform: translate(-0.55rem, 0.42rem);
 }
 
+.map-tag-return {
+  padding: 0.07rem 0.2rem;
+  color: #dffbff;
+  background: rgba(3, 44, 67, 0.66);
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  font-size: 0.46rem;
+  transform: translate(0.45rem, 0.34rem);
+}
+
 .map-tag-ship {
   color: #c8fbff;
   background: rgba(3, 46, 54, 0.72);
@@ -315,6 +324,7 @@ button {
 
 .sun-dot { background: #ffe02a; box-shadow: 0 0 8px rgba(253, 224, 71, 0.8); }
 .black-hole-dot { background: #ef4444; box-shadow: 0 0 7px rgba(239, 68, 68, 0.7); }
+.return-portal-dot { background: #38bdf8; box-shadow: 0 0 7px rgba(56, 189, 248, 0.8); }
 .ship-dot { background: #22d3ee; box-shadow: 0 0 9px rgba(34, 211, 238, 0.95); }
 
 .distance-label,
